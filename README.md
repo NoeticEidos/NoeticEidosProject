@@ -17,14 +17,45 @@ This project introduces a pullback metric approach to analyze the geometry of la
 - Geometric interpretability of LLMs
 
 ### Current/Future Work
-- (High Priority) - Implement the proof of concept to verify the validity of the framework.
-- Model instrumental convergence from Noedic Geometry point of view.
+- Noedic Geometry as a "compass" for interpertability, pointing out regions that might induce rich geometries, which might point out which areas are interesting to investigate.
+- Vanishing Geometries = Misalignment?
+- 
+### Progress Updates
+- (High Priority) - Implement the proof of concept to verify the validity of the framework. - Done. Pullback of Fisher Rao induces a stable geometry on the input space.
+- Model instrumental convergence from Noedic Geometry point of view. - Experimented with contextually converging and diverging words & analysing using the geometry on the input space
 - Formal hypothesis: semantic regions exhibit non-zero curvature; syntax is geometrically flat
-- Geometric analysis of learned spaces via local invariants
-- Connections to quantum systems and wavefunction diffusion via heat kernel
-- Fisher-Rao metric PB pushforward possiblity for trained models (Approximating Reimmanian Submersions?)
-- Chain of agents for analysis of topics : Define → Dissect → Reconstruct → Generalize as a problem solving pipeline
-- Generalize to dynamical systems for multimodal attention
+- Geometric analysis of learned spaces via local invariants - Done
+- Connections to quantum systems and wavefunction diffusion via heat kernel - Done
+- Fisher-Rao metric PB pushforward possiblity for trained models (Approximating Reimmanian Submersions?) - Seems like it. (Sounds irrelevant?)
+- Chain of agents for analysis of topics : Define → Dissect → Reconstruct → Generalize as a problem solving pipeline (Irrelevant - Dropped)
+- Generalize to dynamical systems for multimodal attention. Done in order to trace geometry through hidden layers.
+
+We have managed to pull back the FR geometry & spectral information, keeping high ranked and stable Jacobians (By limiting domain to the relevant subspace & dimension)
+We have shown that semantic convergence behaves better under contextual pullback metric rather than the default Euclidean norm distance:
+Example:
+Words: red vs blue
+Prompt tokens: >The red warning light blinked rapidly. Blue whales are endangered.Red is often associated with danger. On the other hand, blue can represent tranquility.Red means stop. Blue means go.
+
+And the calculations of embedding space distance show that the pullback conserves the expected geometric structure, while euclidean norm does not.
+Words: red vs danger
+Contextual Euclidean: 185.8783
+Contextual Pullback: 4.4717
+
+Words: red vs stop
+Contextual Euclidean: 193.9254
+Contextual Pullback: 2.8601
+
+Words: red vs blue
+Contextual Euclidean: 175.0856
+Contextual Pullback: 5.4166
+
+Words: blue vs stop
+Contextual Euclidean: 217.0193
+Contextual Pullback: 4.6657
+
+Words: blue vs go
+Contextual Euclidean: 233.1082
+Contextual Pullback: 3.6307
 
 ---
 
