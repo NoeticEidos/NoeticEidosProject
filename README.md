@@ -57,6 +57,9 @@ Words: blue vs go
 Contextual Euclidean: 233.1082
 Contextual Pullback: 3.6307
 
+This proves our hypothesis, and further drives us to look for interpertability from geometric point of view.
+*However*: Cramer-Rao Bound teaches us - This method is inherintly limited, and should be viewed as complenetary tool for other methods of interpertability.
+
 ---
 
 ## Our Philosophy
