@@ -32,6 +32,8 @@ This project introduces a pullback metric approach to analyze the geometry of la
 
 We have managed to pull back the FR geometry & spectral information, keeping high ranked and stable Jacobians (By limiting domain to the relevant subspace & dimension)
 We have shown that semantic convergence behaves better under contextual pullback metric rather than the default Euclidean norm distance:
+Also view heatmaps of pairwise distances in euclidean vs. fisher rao norm. 
+Structure is clearly emerging in some layers with the pulled back metric, but it still remains unformalized clearly for the time being.
 Example:
 Words: red vs blue
 Prompt tokens: >The red warning light blinked rapidly. Blue whales are endangered.Red is often associated with danger. On the other hand, blue can represent tranquility.Red means stop. Blue means go.
@@ -57,7 +59,8 @@ Words: blue vs go
 Contextual Euclidean: 233.1082
 Contextual Pullback: 3.6307
 
-This proves our hypothesis, and further drives us to look for interpertability from geometric point of view.
+
+This strengthens our hypothesis, and further drives me to look for interpertability from geometric point of view.
 *However*: Cramer-Rao Bound teaches us - This method is inherintly limited, and should be viewed as complenetary tool for other methods of interpertability.
 
 ---
