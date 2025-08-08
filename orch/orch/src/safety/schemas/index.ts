@@ -1,412 +1,144 @@
 /**
  * JSON Schemas for OCR, NER, and Route validation
- * Provides exact schema definitions for safety validation
+ * Loads actual schema definitions from filesystem for v1.1 gRPC protocol
  */
 
-export interface OCRSchema {
-  type: 'object';
-  properties: {
-    text: { type: 'string' };
-    confidence: { type: 'number'; minimum: 0; maximum: 1 };
-    boundingBoxes?: {
-      type: 'array';
-      items: {
-        type: 'object';
-        properties: {
-          x: { type: 'number'; minimum: 0 };
-          y: { type: 'number'; minimum: 0 };
-          width: { type: 'number'; minimum: 0 };
-          height: { type: 'number'; minimum: 0 };
-          text: { type: 'string' };
-          confidence: { type: 'number'; minimum: 0; maximum: 1 };
-        };
-        required: ['x', 'y', 'width', 'height', 'text', 'confidence'];
-        additionalProperties: false;
-      };
-    };
-    metadata?: {
-      type: 'object';
-      properties: {
-        pageNumber?: { type: 'number'; minimum: 1 };
-        processingTime?: { type: 'number'; minimum: 0 };
-        imageSize?: {
-          type: 'object';
-          properties: {
-            width: { type: 'number'; minimum: 1 };
-            height: { type: 'number'; minimum: 1 };
-          };
-          required: ['width', 'height'];
-          additionalProperties: false;
-        };
-      };
-      additionalProperties: false;
-    };
-  };
-  required: ['text', 'confidence'];
-  additionalProperties: false;
-}
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-export interface NERSchema {
-  type: 'object';
-  properties: {
-    entities: {
-      type: 'array';
-      items: {
-        type: 'object';
-        properties: {
-          text: { type: 'string' };
-          label: { 
-            type: 'string';
-            enum: ['PERSON', 'ORG', 'GPE', 'MONEY', 'DATE', 'TIME', 'PERCENT', 'CARDINAL', 'ORDINAL'];
-          };
-          start: { type: 'number'; minimum: 0 };
-          end: { type: 'number'; minimum: 0 };
-          confidence: { type: 'number'; minimum: 0; maximum: 1 };
-          metadata?: {
-            type: 'object';
-            properties: {
-              normalized?: { type: 'string' };
-              linkedEntity?: { type: 'string'; format: 'uri' };
-              alternativeLabels?: {
-                type: 'array';
-                items: { type: 'string' };
-              };
-            };
-            additionalProperties: false;
-          };
-        };
-        required: ['text', 'label', 'start', 'end', 'confidence'];
-        additionalProperties: false;
-      };
-    };
-    originalText: { type: 'string' };
-    processingMetadata?: {
-      type: 'object';
-      properties: {
-        model: { type: 'string' };
-        version: { type: 'string' };
-        processingTime: { type: 'number'; minimum: 0 };
-        language?: { type: 'string'; pattern: '^[a-z]{2}(-[A-Z]{2})?$' };
-      };
-      additionalProperties: false;
-    };
-  };
-  required: ['entities', 'originalText'];
-  additionalProperties: false;
-}
+// Get the directory of the current module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const schemasDir = join(__dirname, '../../../schemas');
 
-export interface RouteSchema {
-  type: 'object';
-  properties: {
-    path: { 
-      type: 'string'; 
-      pattern: '^/[a-zA-Z0-9/_-]*$';
-    };
-    method: { 
-      type: 'string';
-      enum: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
-    };
-    parameters?: {
-      type: 'object';
-      properties: {
-        query?: {
-          type: 'object';
-          patternProperties: {
-            '^[a-zA-Z_][a-zA-Z0-9_]*$': {
-              oneOf: [
-                { type: 'string' },
-                { type: 'number' },
-                { type: 'boolean' },
-                { 
-                  type: 'array';
-                  items: {
-                    oneOf: [
-                      { type: 'string' },
-                      { type: 'number' },
-                      { type: 'boolean' }
-                    ];
-                  };
-                }
-              ];
-            };
-          };
-          additionalProperties: false;
-        };
-        path?: {
-          type: 'object';
-          patternProperties: {
-            '^[a-zA-Z_][a-zA-Z0-9_]*$': {
-              oneOf: [
-                { type: 'string' },
-                { type: 'number' }
-              ];
-            };
-          };
-          additionalProperties: false;
-        };
-        headers?: {
-          type: 'object';
-          patternProperties: {
-            '^[a-zA-Z-]+$': { type: 'string' };
-          };
-          additionalProperties: false;
-        };
-      };
-      additionalProperties: false;
-    };
-    body?: {
-      type: 'object';
-      properties: {
-        contentType: { 
-          type: 'string';
-          enum: ['application/json', 'application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain'];
-        };
-        data: {
-          oneOf: [
-            { type: 'object' },
-            { type: 'string' },
-            { type: 'array' }
-          ];
-        };
-        size?: { type: 'number'; minimum: 0; maximum: 10485760 }; // 10MB limit
-      };
-      required: ['contentType', 'data'];
-      additionalProperties: false;
-    };
-    timeout?: { type: 'number'; minimum: 100; maximum: 300000 }; // 100ms to 5min
-    retries?: { type: 'number'; minimum: 0; maximum: 5 };
-    authentication?: {
-      type: 'object';
-      properties: {
-        type: { 
-          type: 'string';
-          enum: ['bearer', 'basic', 'apikey', 'oauth2'];
-        };
-        credentials: { type: 'string' };
-        scope?: { type: 'string' };
-      };
-      required: ['type', 'credentials'];
-      additionalProperties: false;
-    };
-    validation?: {
-      type: 'object';
-      properties: {
-        expectedStatus?: {
-          type: 'array';
-          items: { type: 'number'; minimum: 100; maximum: 599 };
-        };
-        responseSchema?: { type: 'object' };
-        maxResponseSize?: { type: 'number'; minimum: 1; maximum: 104857600 }; // 100MB limit
-      };
-      additionalProperties: false;
-    };
-  };
-  required: ['path', 'method'];
-  additionalProperties: false;
-}
+// Load real JSON schemas from filesystem
+let OCR_SCHEMA_JSON: any;
+let NER_SCHEMA_JSON: any;
+let ROUTE_SCHEMA_JSON: any;
 
-// Compiled schemas for runtime validation
-export const OCR_SCHEMA: OCRSchema = {
-  type: 'object',
-  properties: {
-    text: { type: 'string' },
-    confidence: { type: 'number', minimum: 0, maximum: 1 },
-    boundingBoxes: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          x: { type: 'number', minimum: 0 },
-          y: { type: 'number', minimum: 0 },
-          width: { type: 'number', minimum: 0 },
-          height: { type: 'number', minimum: 0 },
-          text: { type: 'string' },
-          confidence: { type: 'number', minimum: 0, maximum: 1 }
-        },
-        required: ['x', 'y', 'width', 'height', 'text', 'confidence'],
-        additionalProperties: false
+try {
+  OCR_SCHEMA_JSON = JSON.parse(readFileSync(join(schemasDir, 'ocr-v1.json'), 'utf-8'));
+  NER_SCHEMA_JSON = JSON.parse(readFileSync(join(schemasDir, 'ner-v1.json'), 'utf-8'));
+  ROUTE_SCHEMA_JSON = JSON.parse(readFileSync(join(schemasDir, 'route-v1.json'), 'utf-8'));
+} catch (error) {
+  console.error('Failed to load JSON schemas:', error);
+  // Fallback to embedded schemas
+  OCR_SCHEMA_JSON = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": ["page_ref", "lang_hint", "ocr_mode"],
+    "properties": {
+      "page_ref": {
+        "type": "string",
+        "pattern": "^sha256:[a-f0-9]{64}$"
+      },
+      "lang_hint": {
+        "type": "string",
+        "enum": ["en", "es", "fr", "de", "auto"],
+        "default": "auto"
+      },
+      "ocr_mode": {
+        "type": "string",
+        "enum": ["fast", "balanced", "accurate"],
+        "default": "balanced"
       }
     },
-    metadata: {
-      type: 'object',
-      properties: {
-        pageNumber: { type: 'number', minimum: 1 },
-        processingTime: { type: 'number', minimum: 0 },
-        imageSize: {
-          type: 'object',
-          properties: {
-            width: { type: 'number', minimum: 1 },
-            height: { type: 'number', minimum: 1 }
-          },
-          required: ['width', 'height'],
-          additionalProperties: false
-        }
+    "additionalProperties": false
+  };
+  
+  NER_SCHEMA_JSON = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": ["text", "entity_schema_version"],
+    "properties": {
+      "text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 50000
       },
-      additionalProperties: false
-    }
-  },
-  required: ['text', 'confidence'],
-  additionalProperties: false
-};
-
-export const NER_SCHEMA: NERSchema = {
-  type: 'object',
-  properties: {
-    entities: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          text: { type: 'string' },
-          label: { 
-            type: 'string',
-            enum: ['PERSON', 'ORG', 'GPE', 'MONEY', 'DATE', 'TIME', 'PERCENT', 'CARDINAL', 'ORDINAL']
-          },
-          start: { type: 'number', minimum: 0 },
-          end: { type: 'number', minimum: 0 },
-          confidence: { type: 'number', minimum: 0, maximum: 1 },
-          metadata: {
-            type: 'object',
-            properties: {
-              normalized: { type: 'string' },
-              linkedEntity: { type: 'string', format: 'uri' },
-              alternativeLabels: {
-                type: 'array',
-                items: { type: 'string' }
-              }
+      "entity_schema_version": {
+        "type": "string",
+        "pattern": "^v[0-9]+\\.[0-9]+$"
+      }
+    },
+    "additionalProperties": false
+  };
+  
+  ROUTE_SCHEMA_JSON = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": ["entities", "ruleset_version"],
+    "properties": {
+      "entities": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["type", "text", "confidence"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["PERSON", "ORG", "MONEY", "DATE", "LOCATION"]
             },
-            additionalProperties: false
+            "text": {"type": "string"},
+            "confidence": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0
+            }
           }
-        },
-        required: ['text', 'label', 'start', 'end', 'confidence'],
-        additionalProperties: false
-      }
-    },
-    originalText: { type: 'string' },
-    processingMetadata: {
-      type: 'object',
-      properties: {
-        model: { type: 'string' },
-        version: { type: 'string' },
-        processingTime: { type: 'number', minimum: 0 },
-        language: { type: 'string', pattern: '^[a-z]{2}(-[A-Z]{2})?$' }
-      },
-      additionalProperties: false
-    }
-  },
-  required: ['entities', 'originalText'],
-  additionalProperties: false
-};
-
-export const ROUTE_SCHEMA: RouteSchema = {
-  type: 'object',
-  properties: {
-    path: { 
-      type: 'string', 
-      pattern: '^/[a-zA-Z0-9/_-]*$'
-    },
-    method: { 
-      type: 'string',
-      enum: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
-    },
-    parameters: {
-      type: 'object',
-      properties: {
-        query: {
-          type: 'object',
-          patternProperties: {
-            '^[a-zA-Z_][a-zA-Z0-9_]*$': {
-              oneOf: [
-                { type: 'string' },
-                { type: 'number' },
-                { type: 'boolean' },
-                { 
-                  type: 'array',
-                  items: {
-                    oneOf: [
-                      { type: 'string' },
-                      { type: 'number' },
-                      { type: 'boolean' }
-                    ]
-                  }
-                }
-              ]
-            }
-          },
-          additionalProperties: false
-        },
-        path: {
-          type: 'object',
-          patternProperties: {
-            '^[a-zA-Z_][a-zA-Z0-9_]*$': {
-              oneOf: [
-                { type: 'string' },
-                { type: 'number' }
-              ]
-            }
-          },
-          additionalProperties: false
-        },
-        headers: {
-          type: 'object',
-          patternProperties: {
-            '^[a-zA-Z-]+$': { type: 'string' }
-          },
-          additionalProperties: false
         }
       },
-      additionalProperties: false
+      "ruleset_version": {
+        "type": "string",
+        "pattern": "^v[0-9]+\\.[0-9]+$"
+      }
     },
-    body: {
-      type: 'object',
-      properties: {
-        contentType: { 
-          type: 'string',
-          enum: ['application/json', 'application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain']
-        },
-        data: {
-          oneOf: [
-            { type: 'object' },
-            { type: 'string' },
-            { type: 'array' }
-          ]
-        },
-        size: { type: 'number', minimum: 0, maximum: 10485760 }
-      },
-      required: ['contentType', 'data'],
-      additionalProperties: false
-    },
-    timeout: { type: 'number', minimum: 100, maximum: 300000 },
-    retries: { type: 'number', minimum: 0, maximum: 5 },
-    authentication: {
-      type: 'object',
-      properties: {
-        type: { 
-          type: 'string',
-          enum: ['bearer', 'basic', 'apikey', 'oauth2']
-        },
-        credentials: { type: 'string' },
-        scope: { type: 'string' }
-      },
-      required: ['type', 'credentials'],
-      additionalProperties: false
-    },
-    validation: {
-      type: 'object',
-      properties: {
-        expectedStatus: {
-          type: 'array',
-          items: { type: 'number', minimum: 100, maximum: 599 }
-        },
-        responseSchema: { type: 'object' },
-        maxResponseSize: { type: 'number', minimum: 1, maximum: 104857600 }
-      },
-      additionalProperties: false
-    }
-  },
-  required: ['path', 'method'],
-  additionalProperties: false
-};
+    "additionalProperties": false
+  };
+}
+
+export interface OCRData {
+  page_ref: string;
+  lang_hint?: 'en' | 'es' | 'fr' | 'de' | 'auto';
+  ocr_mode?: 'fast' | 'balanced' | 'accurate';
+  resolution_dpi?: number;
+  quality_speed_tradeoff?: number;
+}
+
+export interface NERData {
+  text: string;
+  domain_hint?: 'legal' | 'medical' | 'financial' | 'general';
+  entity_schema_version: string;
+  postproc_thresholds?: {
+    min_confidence?: number;
+    min_entity_length?: number;
+  };
+}
+
+export interface RouteData {
+  entities: Array<{
+    type: 'PERSON' | 'ORG' | 'MONEY' | 'DATE' | 'LOCATION';
+    text: string;
+    span?: {
+      start: number;
+      end: number;
+    };
+    confidence: number;
+  }>;
+  ruleset_version: string;
+  business_constraints?: {
+    priority_entities?: string[];
+    risk_tolerance?: 'low' | 'medium' | 'high';
+  };
+}
+
+// Compiled schemas for runtime validation (loaded from filesystem)
+export const OCR_SCHEMA = OCR_SCHEMA_JSON;
+
+export const NER_SCHEMA = NER_SCHEMA_JSON;
+
+export const ROUTE_SCHEMA = ROUTE_SCHEMA_JSON;
 
 export const ALL_SCHEMAS = {
   ocr: OCR_SCHEMA,
@@ -415,72 +147,53 @@ export const ALL_SCHEMAS = {
 } as const;
 
 export type SchemaType = keyof typeof ALL_SCHEMAS;
-export type OCRData = {
-  text: string;
-  confidence: number;
-  boundingBoxes?: Array<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    text: string;
-    confidence: number;
-  }>;
-  metadata?: {
-    pageNumber?: number;
-    processingTime?: number;
-    imageSize?: {
-      width: number;
-      height: number;
-    };
-  };
-};
 
-export type NERData = {
-  entities: Array<{
-    text: string;
-    label: 'PERSON' | 'ORG' | 'GPE' | 'MONEY' | 'DATE' | 'TIME' | 'PERCENT' | 'CARDINAL' | 'ORDINAL';
-    start: number;
-    end: number;
-    confidence: number;
-    metadata?: {
-      normalized?: string;
-      linkedEntity?: string;
-      alternativeLabels?: string[];
-    };
-  }>;
-  originalText: string;
-  processingMetadata?: {
-    model?: string;
-    version?: string;
-    processingTime?: number;
-    language?: string;
-  };
-};
-
-export type RouteData = {
+// Schema validation and error formatting utilities
+export interface DetailedValidationError {
   path: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS';
-  parameters?: {
-    query?: Record<string, string | number | boolean | Array<string | number | boolean>>;
-    path?: Record<string, string | number>;
-    headers?: Record<string, string>;
-  };
-  body?: {
-    contentType: 'application/json' | 'application/x-www-form-urlencoded' | 'multipart/form-data' | 'text/plain';
-    data: object | string | Array<any>;
-    size?: number;
-  };
-  timeout?: number;
-  retries?: number;
-  authentication?: {
-    type: 'bearer' | 'basic' | 'apikey' | 'oauth2';
-    credentials: string;
-    scope?: string;
-  };
-  validation?: {
-    expectedStatus?: number[];
-    responseSchema?: object;
-    maxResponseSize?: number;
-  };
-};
+  message: string;
+  value?: any;
+  allowedValues?: any[];
+  constraint?: string;
+}
+
+export interface ValidationContext {
+  stepId: string;
+  stepType: string;
+  userId?: string;
+  sessionId?: string;
+  timestamp: number;
+}
+
+export function formatValidationErrors(errors: any[], context?: ValidationContext): DetailedValidationError[] {
+  return errors.map(error => ({
+    path: error.instancePath || error.dataPath || 'root',
+    message: error.message || 'Validation failed',
+    value: error.data,
+    allowedValues: error.schema?.enum,
+    constraint: error.keyword
+  }));
+}
+
+export function createContextualErrorMessage(error: DetailedValidationError, context?: ValidationContext): string {
+  const base = `Validation failed at ${error.path}: ${error.message}`;
+  const contextInfo = context ? ` (Step: ${context.stepId}, Type: ${context.stepType})` : '';
+  const suggestions = getSuggestions(error);
+  return `${base}${contextInfo}${suggestions ? `. Suggestion: ${suggestions}` : ''}`;
+}
+
+function getSuggestions(error: DetailedValidationError): string | null {
+  if (error.constraint === 'enum' && error.allowedValues) {
+    return `Use one of: ${error.allowedValues.join(', ')}`;
+  }
+  if (error.constraint === 'pattern') {
+    return 'Check the format requirements';
+  }
+  if (error.constraint === 'minimum' || error.constraint === 'maximum') {
+    return 'Check the value range';
+  }
+  if (error.constraint === 'required') {
+    return 'This field is mandatory';
+  }
+  return null;
+}

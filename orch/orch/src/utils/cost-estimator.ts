@@ -1,7 +1,7 @@
-import { CostEstimate } from '../types/index.js';
+import { CostEstimate, OCRArgs, NERArgs, RouteArgs } from '../types/index.js';
 
 export class CostEstimator {
-  static estimateOCR(imageSize: number, options: any): CostEstimate {
+  static estimateOCR(imageSize: number, options: Partial<OCRArgs['options']> = {}): CostEstimate {
     // Base costs
     let tokens = Math.ceil(imageSize / 1024) * 10; // ~10 tokens per KB
     let computeUnits = Math.ceil(imageSize / (1024 * 1024)) * 50; // ~50 units per MB
@@ -37,7 +37,7 @@ export class CostEstimator {
     };
   }
 
-  static estimateNER(textLength: number, options: any): CostEstimate {
+  static estimateNER(textLength: number, options: Partial<NERArgs['options']> = {}): CostEstimate {
     // Base costs
     let tokens = Math.ceil(textLength / 4); // ~4 chars per token
     let computeUnits = Math.ceil(textLength / 100); // ~100 chars per compute unit
@@ -80,7 +80,7 @@ export class CostEstimator {
     };
   }
 
-  static estimateRouting(routeCount: number, requestComplexity: number): CostEstimate {
+  static estimateRouting(routeCount: number, requestComplexity: number, options: Partial<RouteArgs['options']> = {}): CostEstimate {
     // Base costs - routing is generally lightweight
     let tokens = 10 + routeCount * 2; // Base + routes analysis
     let computeUnits = 5 + Math.ceil(routeCount / 10); // Very lightweight
