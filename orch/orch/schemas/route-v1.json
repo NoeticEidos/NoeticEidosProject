@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object", 
+  "required": ["entities", "ruleset_version"],
+  "properties": {
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "text", "confidence"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["PERSON", "ORG", "MONEY", "DATE", "LOCATION"]
+          },
+          "text": {"type": "string"},
+          "span": {
+            "type": "object",
+            "properties": {
+              "start": {"type": "integer", "minimum": 0},
+              "end": {"type": "integer", "minimum": 0}
+            }
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0
+          }
+        }
+      }
+    },
+    "ruleset_version": {
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+$"
+    },
+    "business_constraints": {
+      "type": "object",
+      "properties": {
+        "priority_entities": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "risk_tolerance": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "default": "medium"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

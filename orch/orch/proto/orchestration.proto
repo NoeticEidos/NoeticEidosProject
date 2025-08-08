@@ -1,0 +1,191 @@
+syntax = "proto3";
+package orchestration.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// =====================
+// Core data contracts
+// =====================
+
+message Context {
+  string context_id = 1;
+  string tenant_id = 2;
+  map<string,string> features = 3;
+  bytes blob = 4;
+}
+
+message Budget {
+  double token_budget = 1;
+  double cost_budget = 2;
+  int64 latency_slo_ms = 3;
+  int32 depth_cap = 4;
+}
+
+message DecisionEvidence {
+  double logprob = 1;          // under OLD policy
+  double entropy = 2;          // under OLD policy
+  string head = 3;             // optional head/branch id
+}
+
+message Step {
+  string ou_type = 1;          // "ocr" | "ner" | "route" | ...
+  string tool = 2;             // concrete tool/model name
+  string args_json = 3;        // validated by Node against OU JSON Schema
+  repeated string capabilities = 4;
+  double est_cost = 5;
+  double est_latency_ms = 6;
+  DecisionEvidence decision = 7;
+  string schema_version = 8;   // OU schema version (e.g., "ocr:v1")
+  string model_version = 9;    // e.g., "spacy/en_core_web_lg@3.7.1"
+  string model_digest = 10;    // optional OCI/hash, e.g., "sha256:abcd..."
+}
+
+message Signature {
+  string alg = 1;              // "HMAC-SHA256" | "Ed25519" | ...
+  bytes sig = 2;
+  string key_id = 3;
+}
+
+message WorkflowPlan {
+  string plan_id = 1;
+  repeated Step steps = 2;
+  double pred_reward = 3;
+  double pred_cost = 4;
+  double uncertainty = 5;
+  string policy_snapshot_id = 6;   // immutable
+  Signature signature = 7;         // over {steps, snapshot}
+}
+
+message Outcome {
+  bool success = 1;
+  double reward = 2;
+  double cost = 3;
+  int64 latency_ms = 4;
+  string failure_reason = 5;
+  string trace_id = 6;
+  string artifact_ref = 7;
+  message Violations {
+    bool budget_exceeded = 1;
+    bool depth_exceeded = 2;
+    bool schema_violation = 3;
+    repeated string details = 4;
+  }
+  Violations violations = 8;
+
+  // v1.1 additions
+  int32 executed_steps = 9;         // actually executed steps count
+  string termination_reason = 10;   // "ok" | "budget_exhausted" | "timeout" | "step_failure" | ...
+}
+
+message ReplayInfo {
+  string seed = 1;
+  map<string,string> tool_versions = 2;
+  map<string,string> model_versions = 3;   // filled from Step.model_version
+  map<string,string> artifact_hashes = 4;  // CAS digests, container digest, config commit, etc.
+}
+
+message Trajectory {
+  Context context = 1;
+  WorkflowPlan plan = 2;
+  Outcome outcome = 3;
+  ReplayInfo replay = 4;
+  google.protobuf.Timestamp ts = 5;
+  string idempotency_key = 6;
+}
+
+// =====================
+// RPCs
+// =====================
+
+service PolicyService {
+  // PLAN
+  rpc SampleWorkflow(SampleRequest) returns (SampleResponse);
+  rpc BatchSampleWorkflows(BatchSampleRequest) returns (BatchSampleResponse); // v1.1
+
+  // EVAL (for canary/challenger gates)
+  rpc EvaluateSurrogate(EvalRequest) returns (EvalResponse);
+
+  // LOG
+  rpc LogExecution(Trajectory) returns (Ack);
+  rpc StreamTrajectories(stream Trajectory) returns (Ack);
+
+  // TRAIN
+  rpc UpdatePolicy(google.protobuf.Empty) returns (UpdateResponse);
+
+  // KEYS (v1.1)
+  rpc GetSigningKeys(google.protobuf.Empty) returns (SigningKeySet);
+
+  // META/HEALTH
+  rpc GetPolicyMetadata(google.protobuf.Empty) returns (PolicyMetadata);
+  rpc Health(google.protobuf.Empty) returns (HealthStatus);
+}
+
+// Requests / Responses
+
+message SampleRequest {
+  Context context = 1;
+  Budget budget = 2;
+  bool shadow = 3;             // shadow plans are excluded from training by default
+}
+
+message SampleResponse { WorkflowPlan plan = 1; }
+
+message BatchSampleRequest { repeated SampleRequest requests = 1; } // v1.1
+message BatchSampleResponse { repeated SampleResponse responses = 1; } // v1.1
+
+message EvalRequest {
+  repeated Trajectory batch = 1;             // all with same OLD snapshot
+  string candidate_policy_snapshot_id = 2;
+  message OffPolicy {
+    bool use_importance_weights = 1;
+    double clip_low = 2;
+    double clip_high = 3;
+  }
+  OffPolicy offpolicy = 3;
+}
+
+message EvalResponse {
+  double surrogate_delta = 1;                // L(new)-L(old)
+  double mean_kl_old_new = 2;                // KL(old||new)
+  double ess_ratio = 3;                      // if IS used
+  double iw_clip_low = 4;
+  double iw_clip_high = 5;
+}
+
+message UpdateResponse {
+  string policy_snapshot_id = 1;
+  TrainingStats stats = 2;
+}
+
+message TrainingStats {
+  double mean_kl = 1;
+  double surrogate_delta = 2;
+  double g_dot_v = 3;
+  int32 cg_iters = 4;
+  double cg_residual = 5;
+  double damping = 6;
+  int32 line_search_backtracks = 7;
+  double entropy = 8;
+}
+
+message PolicyMetadata {
+  string policy_snapshot_id = 1;
+  int64 steps_trained = 2;
+  double ema_kl = 3;
+  double ema_entropy = 4;
+  google.protobuf.Timestamp last_update_ts = 5;
+}
+
+message SigningKey {
+  string key_id = 1;
+  string alg = 2;              // "HMAC-SHA256" | "Ed25519" | ...
+  string public_pem = 3;       // empty for HMAC; Node stores shared secret out-of-band
+  int64 not_before = 4;
+  int64 not_after = 5;
+}
+
+message SigningKeySet { repeated SigningKey keys = 1; }
+
+message HealthStatus { string status = 1; }
+message Ack { string status = 1; }

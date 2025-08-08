@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["page_ref", "lang_hint", "ocr_mode"],
+  "properties": {
+    "page_ref": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "Content-addressed page reference"
+    },
+    "lang_hint": {
+      "type": "string", 
+      "enum": ["en", "es", "fr", "de", "auto"],
+      "default": "auto"
+    },
+    "ocr_mode": {
+      "type": "string",
+      "enum": ["fast", "balanced", "accurate"],
+      "default": "balanced"
+    },
+    "resolution_dpi": {
+      "type": "integer",
+      "minimum": 150,
+      "maximum": 600,
+      "default": 300
+    },
+    "quality_speed_tradeoff": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "default": 0.5,
+      "description": "0=fastest, 1=highest quality"
+    }
+  },
+  "additionalProperties": false
+}

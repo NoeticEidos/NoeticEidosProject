@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__ruv-swarm",
+      "mcp__claude-flow",
+      "Bash(find:*)",
+      "Bash(mkdir:*)",
+      "Bash(find:*)"
+    ],
+    "deny": []
+  }
+}

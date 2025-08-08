@@ -1,0 +1,442 @@
+syntax = "proto3";
+
+package policy.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+
+option go_package = "github.com/example/policy-service/proto/policy/v1;policyv1";
+
+// Policy Service v1.1 - Complete implementation
+service PolicyService {
+  // Core Policy Methods
+  rpc CreatePolicy(CreatePolicyRequest) returns (CreatePolicyResponse);
+  rpc GetPolicy(GetPolicyRequest) returns (GetPolicyResponse);
+  rpc UpdatePolicy(UpdatePolicyRequest) returns (UpdatePolicyResponse);
+  rpc DeletePolicy(DeletePolicyRequest) returns (DeletePolicyResponse);
+  rpc ListPolicies(ListPoliciesRequest) returns (ListPoliciesResponse);
+  
+  // Workflow Management
+  rpc GenerateWorkflowPlan(GenerateWorkflowPlanRequest) returns (GenerateWorkflowPlanResponse);
+  rpc ExecuteWorkflow(ExecuteWorkflowRequest) returns (ExecuteWorkflowResponse);
+  rpc GetWorkflowStatus(GetWorkflowStatusRequest) returns (GetWorkflowStatusResponse);
+  
+  // TRPO and Reinforcement Learning
+  rpc EvaluateSurrogate(EvaluateSurrogateRequest) returns (EvaluateSurrogateResponse);
+  rpc UpdatePolicyGradient(UpdatePolicyGradientRequest) returns (UpdatePolicyGradientResponse);
+  rpc ComputeAdvantage(ComputeAdvantageRequest) returns (ComputeAdvantageResponse);
+  
+  // Batch Operations
+  rpc BatchCreatePolicies(BatchCreatePoliciesRequest) returns (BatchCreatePoliciesResponse);
+  rpc BatchEvaluate(BatchEvaluateRequest) returns (BatchEvaluateResponse);
+  rpc BatchUpdate(BatchUpdateRequest) returns (BatchUpdateResponse);
+  
+  // Authentication and Signing
+  rpc GetSigningKeys(GetSigningKeysRequest) returns (GetSigningKeysResponse);
+  rpc ValidateSignature(ValidateSignatureRequest) returns (ValidateSignatureResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  
+  // Health and Monitoring
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+  rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse);
+}
+
+// Policy Messages
+message Policy {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  PolicyType type = 4;
+  PolicyStatus status = 5;
+  map<string, string> parameters = 6;
+  repeated PolicyRule rules = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  string version = 10;
+  repeated string tags = 11;
+  PolicyMetadata metadata = 12;
+}
+
+message PolicyRule {
+  string id = 1;
+  string condition = 2;
+  string action = 3;
+  int32 priority = 4;
+  bool enabled = 5;
+  map<string, google.protobuf.Any> parameters = 6;
+}
+
+message PolicyMetadata {
+  string owner = 1;
+  string team = 2;
+  map<string, string> labels = 3;
+  repeated string environments = 4;
+}
+
+enum PolicyType {
+  POLICY_TYPE_UNSPECIFIED = 0;
+  POLICY_TYPE_ACCESS = 1;
+  POLICY_TYPE_SECURITY = 2;
+  POLICY_TYPE_WORKFLOW = 3;
+  POLICY_TYPE_REINFORCEMENT = 4;
+  POLICY_TYPE_COMPLIANCE = 5;
+}
+
+enum PolicyStatus {
+  POLICY_STATUS_UNSPECIFIED = 0;
+  POLICY_STATUS_DRAFT = 1;
+  POLICY_STATUS_ACTIVE = 2;
+  POLICY_STATUS_INACTIVE = 3;
+  POLICY_STATUS_DEPRECATED = 4;
+}
+
+// Request/Response Messages
+message CreatePolicyRequest {
+  Policy policy = 1;
+  bool validate_only = 2;
+}
+
+message CreatePolicyResponse {
+  Policy policy = 1;
+  repeated ValidationError validation_errors = 2;
+}
+
+message GetPolicyRequest {
+  string id = 1;
+  string version = 2;
+}
+
+message GetPolicyResponse {
+  Policy policy = 1;
+}
+
+message UpdatePolicyRequest {
+  Policy policy = 1;
+  repeated string update_mask = 2;
+  bool validate_only = 3;
+}
+
+message UpdatePolicyResponse {
+  Policy policy = 1;
+  repeated ValidationError validation_errors = 2;
+}
+
+message DeletePolicyRequest {
+  string id = 1;
+  bool force = 2;
+}
+
+message DeletePolicyResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListPoliciesRequest {
+  string filter = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  string order_by = 4;
+  PolicyType type = 5;
+  PolicyStatus status = 6;
+}
+
+message ListPoliciesResponse {
+  repeated Policy policies = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+// Workflow Messages
+message WorkflowPlan {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  repeated WorkflowStep steps = 4;
+  map<string, google.protobuf.Any> parameters = 5;
+  google.protobuf.Timestamp created_at = 6;
+  WorkflowStatus status = 7;
+  int32 estimated_duration_seconds = 8;
+}
+
+message WorkflowStep {
+  string id = 1;
+  string name = 2;
+  string action = 3;
+  map<string, google.protobuf.Any> parameters = 4;
+  repeated string dependencies = 5;
+  int32 timeout_seconds = 6;
+  bool parallel_execution = 7;
+  WorkflowStepStatus status = 8;
+  string result = 9;
+  google.protobuf.Timestamp started_at = 10;
+  google.protobuf.Timestamp completed_at = 11;
+}
+
+enum WorkflowStatus {
+  WORKFLOW_STATUS_UNSPECIFIED = 0;
+  WORKFLOW_STATUS_PENDING = 1;
+  WORKFLOW_STATUS_RUNNING = 2;
+  WORKFLOW_STATUS_COMPLETED = 3;
+  WORKFLOW_STATUS_FAILED = 4;
+  WORKFLOW_STATUS_CANCELLED = 5;
+}
+
+enum WorkflowStepStatus {
+  WORKFLOW_STEP_STATUS_UNSPECIFIED = 0;
+  WORKFLOW_STEP_STATUS_PENDING = 1;
+  WORKFLOW_STEP_STATUS_RUNNING = 2;
+  WORKFLOW_STEP_STATUS_COMPLETED = 3;
+  WORKFLOW_STEP_STATUS_FAILED = 4;
+  WORKFLOW_STEP_STATUS_SKIPPED = 5;
+}
+
+message GenerateWorkflowPlanRequest {
+  string policy_id = 1;
+  map<string, google.protobuf.Any> context = 2;
+  repeated string requirements = 3;
+  WorkflowComplexity complexity = 4;
+}
+
+message GenerateWorkflowPlanResponse {
+  WorkflowPlan plan = 1;
+  repeated string recommendations = 2;
+  float confidence_score = 3;
+}
+
+message ExecuteWorkflowRequest {
+  string workflow_id = 1;
+  map<string, google.protobuf.Any> parameters = 2;
+  bool async_execution = 3;
+}
+
+message ExecuteWorkflowResponse {
+  string execution_id = 1;
+  WorkflowStatus status = 2;
+  string message = 3;
+}
+
+message GetWorkflowStatusRequest {
+  string execution_id = 1;
+}
+
+message GetWorkflowStatusResponse {
+  WorkflowPlan plan = 1;
+  repeated WorkflowStep steps = 2;
+  float progress = 3;
+}
+
+enum WorkflowComplexity {
+  WORKFLOW_COMPLEXITY_UNSPECIFIED = 0;
+  WORKFLOW_COMPLEXITY_SIMPLE = 1;
+  WORKFLOW_COMPLEXITY_MODERATE = 2;
+  WORKFLOW_COMPLEXITY_COMPLEX = 3;
+  WORKFLOW_COMPLEXITY_ENTERPRISE = 4;
+}
+
+// TRPO Messages
+message EvaluateSurrogateRequest {
+  string policy_id = 1;
+  repeated StateActionPair trajectory = 2;
+  TRPOParameters trpo_params = 3;
+  bool return_detailed_metrics = 4;
+}
+
+message EvaluateSurrogateResponse {
+  float surrogate_loss = 1;
+  float kl_divergence = 2;
+  float policy_entropy = 3;
+  float advantage_variance = 4;
+  TRPOMetrics detailed_metrics = 5;
+  repeated float action_probabilities = 6;
+}
+
+message StateActionPair {
+  repeated float state = 1;
+  repeated float action = 2;
+  float reward = 3;
+  float value_estimate = 4;
+  float log_probability = 5;
+}
+
+message TRPOParameters {
+  float delta = 1; // Trust region constraint
+  float gamma = 2; // Discount factor
+  float lambda = 3; // GAE parameter
+  int32 max_kl_samples = 4;
+  float cg_damping = 5; // Conjugate gradient damping
+  int32 cg_iterations = 6;
+}
+
+message TRPOMetrics {
+  float policy_loss = 1;
+  float value_loss = 2;
+  float entropy_loss = 3;
+  float kl_divergence = 4;
+  float advantage_mean = 5;
+  float advantage_std = 6;
+  float explained_variance = 7;
+  float gradient_norm = 8;
+  int32 trajectory_length = 9;
+  repeated float reward_distribution = 10;
+}
+
+message UpdatePolicyGradientRequest {
+  string policy_id = 1;
+  repeated float gradients = 2;
+  float learning_rate = 3;
+  TRPOParameters trpo_params = 4;
+}
+
+message UpdatePolicyGradientResponse {
+  bool success = 1;
+  float policy_improvement = 2;
+  string updated_policy_version = 3;
+  TRPOMetrics metrics = 4;
+}
+
+message ComputeAdvantageRequest {
+  repeated StateActionPair trajectory = 1;
+  float gamma = 2;
+  float lambda = 3;
+}
+
+message ComputeAdvantageResponse {
+  repeated float advantages = 1;
+  repeated float value_targets = 2;
+  float average_advantage = 3;
+  float advantage_variance = 4;
+}
+
+// Batch Operations
+message BatchCreatePoliciesRequest {
+  repeated CreatePolicyRequest requests = 1;
+  bool fail_on_first_error = 2;
+}
+
+message BatchCreatePoliciesResponse {
+  repeated CreatePolicyResponse responses = 1;
+  repeated BatchError errors = 2;
+}
+
+message BatchEvaluateRequest {
+  repeated EvaluateSurrogateRequest requests = 1;
+  bool parallel_processing = 2;
+}
+
+message BatchEvaluateResponse {
+  repeated EvaluateSurrogateResponse responses = 1;
+  repeated BatchError errors = 2;
+  float average_processing_time_ms = 3;
+}
+
+message BatchUpdateRequest {
+  repeated UpdatePolicyRequest requests = 1;
+  bool atomic_updates = 2;
+}
+
+message BatchUpdateResponse {
+  repeated UpdatePolicyResponse responses = 1;
+  repeated BatchError errors = 2;
+}
+
+message BatchError {
+  int32 index = 1;
+  string error_code = 2;
+  string error_message = 3;
+}
+
+// Authentication and Keys
+message GetSigningKeysRequest {
+  string key_type = 1; // RSA, ECDSA, Ed25519
+  int32 key_size = 2;
+}
+
+message GetSigningKeysResponse {
+  repeated SigningKey keys = 1;
+}
+
+message SigningKey {
+  string id = 1;
+  string type = 2;
+  string public_key = 3;
+  string private_key = 4; // Only for testing
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp expires_at = 6;
+  bool is_test_key = 7;
+}
+
+message ValidateSignatureRequest {
+  string key_id = 1;
+  bytes data = 2;
+  bytes signature = 3;
+}
+
+message ValidateSignatureResponse {
+  bool valid = 1;
+  string message = 2;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+// Health and Monitoring
+message HealthCheckRequest {
+  string component = 1;
+}
+
+message HealthCheckResponse {
+  HealthStatus status = 1;
+  string message = 2;
+  map<string, string> details = 3;
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+enum HealthStatus {
+  HEALTH_STATUS_UNSPECIFIED = 0;
+  HEALTH_STATUS_HEALTHY = 1;
+  HEALTH_STATUS_DEGRADED = 2;
+  HEALTH_STATUS_UNHEALTHY = 3;
+}
+
+message GetMetricsRequest {
+  repeated string metric_names = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+}
+
+message GetMetricsResponse {
+  repeated Metric metrics = 1;
+}
+
+message Metric {
+  string name = 1;
+  MetricType type = 2;
+  repeated MetricDataPoint data_points = 3;
+  map<string, string> labels = 4;
+}
+
+message MetricDataPoint {
+  google.protobuf.Timestamp timestamp = 1;
+  float value = 2;
+}
+
+enum MetricType {
+  METRIC_TYPE_UNSPECIFIED = 0;
+  METRIC_TYPE_COUNTER = 1;
+  METRIC_TYPE_GAUGE = 2;
+  METRIC_TYPE_HISTOGRAM = 3;
+}
+
+// Common Messages
+message ValidationError {
+  string field = 1;
+  string code = 2;
+  string message = 3;
+}

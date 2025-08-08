@@ -1,0 +1,543 @@
+{
+  "executionId": "exec-budget-exceeded-20241208-003",
+  "workflowId": "resource-intensive-workflow",
+  "workflowVersion": "1.0.0",
+  "startTime": "2024-12-08T16:45:00.000Z",
+  "endTime": "2024-12-08T16:45:04.320Z",
+  "totalDuration": 4320,
+  "status": "budget_exceeded",
+  "steps": [
+    {
+      "stepId": "bulk-ocr-processing",
+      "sequence": 1,
+      "timestamp": "2024-12-08T16:45:00.100Z",
+      "action": "ocr",
+      "parameters": {
+        "imageUrls": [
+          "https://storage.example.com/batch/doc-001.jpg",
+          "https://storage.example.com/batch/doc-002.jpg",
+          "https://storage.example.com/batch/doc-003.jpg",
+          "https://storage.example.com/batch/doc-004.jpg",
+          "https://storage.example.com/batch/doc-005.jpg"
+        ],
+        "language": "en",
+        "batchProcessing": true,
+        "highQualityMode": true
+      },
+      "result": {
+        "status": "completed",
+        "startTime": "2024-12-08T16:45:00.100Z",
+        "endTime": "2024-12-08T16:45:03.850Z",
+        "duration": 3750,
+        "result": {
+          "processedDocuments": 5,
+          "totalText": "[LARGE_TEXT_CONTENT_TRUNCATED]",
+          "averageConfidence": 0.89,
+          "totalWords": 15750,
+          "processingStatistics": {
+            "successfulProcessing": 5,
+            "failedProcessing": 0,
+            "averageProcessingTime": 750
+          }
+        },
+        "cost": {
+          "tokens": 8750,
+          "computeTime": 3750,
+          "memory": 157286400,
+          "apiCalls": 5,
+          "monetaryCost": 0.875
+        },
+        "safetyChecks": [
+          {
+            "constraintId": "budget-check",
+            "timestamp": "2024-12-08T16:45:00.105Z",
+            "result": "warning",
+            "details": {
+              "budgetUtilization": {
+                "tokens": 0.875,
+                "cost": 0.875
+              },
+              "warningMessage": "High resource utilization detected"
+            }
+          }
+        ]
+      },
+      "contextBefore": {
+        "variables": {
+          "batch_size": 5,
+          "processing_mode": "high_quality",
+          "priority": "urgent"
+        },
+        "currentBudget": {
+          "tokens": 0,
+          "computeTime": 0,
+          "memory": 0,
+          "apiCalls": 0,
+          "monetaryCost": 0
+        },
+        "safetyState": {
+          "violations": [],
+          "activeConstraints": [
+            {
+              "id": "budget-limit",
+              "type": "resource_limit",
+              "description": "Enforce strict budget constraints",
+              "parameters": {
+                "maxTokens": 10000,
+                "maxCost": 1.0,
+                "maxMemory": 104857600,
+                "maxApiCalls": 10
+              },
+              "severity": "error"
+            }
+          ],
+          "riskLevel": "low",
+          "lastCheck": "2024-12-08T16:45:00.095Z"
+        }
+      },
+      "contextAfter": {
+        "variables": {
+          "batch_size": 5,
+          "processing_mode": "high_quality",
+          "priority": "urgent",
+          "processed_documents": 5,
+          "total_words": 15750,
+          "average_confidence": 0.89
+        },
+        "currentBudget": {
+          "tokens": 8750,
+          "computeTime": 3750,
+          "memory": 157286400,
+          "apiCalls": 5,
+          "monetaryCost": 0.875
+        },
+        "safetyState": {
+          "violations": [],
+          "activeConstraints": [
+            {
+              "id": "budget-limit",
+              "type": "resource_limit",
+              "description": "Enforce strict budget constraints",
+              "parameters": {
+                "maxTokens": 10000,
+                "maxCost": 1.0,
+                "maxMemory": 104857600,
+                "maxApiCalls": 10
+              },
+              "severity": "error"
+            }
+          ],
+          "riskLevel": "high",
+          "lastCheck": "2024-12-08T16:45:03.855Z"
+        }
+      },
+      "costIncurred": {
+        "tokens": 8750,
+        "computeTime": 3750,
+        "memory": 157286400,
+        "apiCalls": 5,
+        "monetaryCost": 0.875
+      }
+    },
+    {
+      "stepId": "advanced-ner-analysis",
+      "sequence": 2,
+      "timestamp": "2024-12-08T16:45:03.900Z",
+      "action": "ner",
+      "parameters": {
+        "text": "${bulk-ocr-processing.result.totalText}",
+        "entityTypes": ["PERSON", "ORG", "GPE", "MONEY", "DATE", "TIME", "PERCENT", "CARDINAL", "ORDINAL"],
+        "confidenceThreshold": 0.7,
+        "deepAnalysis": true,
+        "crossReferencing": true,
+        "semanticEnrichment": true
+      },
+      "result": {
+        "status": "cancelled",
+        "startTime": "2024-12-08T16:45:03.900Z",
+        "endTime": "2024-12-08T16:45:04.320Z",
+        "duration": 420,
+        "error": {
+          "type": "BudgetExceededError",
+          "message": "Budget limit exceeded: Projected cost $0.35 would exceed remaining budget $0.125",
+          "code": "BUDGET_EXCEEDED",
+          "details": {
+            "projectedCost": {
+              "tokens": 2450,
+              "computeTime": 2800,
+              "memory": 52428800,
+              "apiCalls": 1,
+              "monetaryCost": 0.35
+            },
+            "remainingBudget": {
+              "tokens": 1250,
+              "computeTime": 16250,
+              "memory": -52571200,
+              "apiCalls": 5,
+              "monetaryCost": 0.125
+            },
+            "violatedConstraints": ["monetaryCost", "memory"]
+          }
+        },
+        "cost": {
+          "tokens": 0,
+          "computeTime": 420,
+          "memory": 1048576,
+          "apiCalls": 0,
+          "monetaryCost": 0.005
+        },
+        "safetyViolations": [
+          {
+            "constraintId": "budget-limit",
+            "severity": "error",
+            "message": "Monetary cost budget exceeded",
+            "timestamp": "2024-12-08T16:45:04.050Z",
+            "stepId": "advanced-ner-analysis",
+            "details": {
+              "budgetType": "monetaryCost",
+              "limit": 1.0,
+              "projected": 1.225,
+              "current": 0.875,
+              "requested": 0.35
+            }
+          },
+          {
+            "constraintId": "budget-limit",
+            "severity": "error",
+            "message": "Memory budget exceeded",
+            "timestamp": "2024-12-08T16:45:04.055Z",
+            "stepId": "advanced-ner-analysis",
+            "details": {
+              "budgetType": "memory",
+              "limit": 104857600,
+              "projected": 209715200,
+              "current": 157286400,
+              "requested": 52428800
+            }
+          }
+        ]
+      },
+      "contextBefore": {
+        "variables": {
+          "batch_size": 5,
+          "processing_mode": "high_quality",
+          "priority": "urgent",
+          "processed_documents": 5,
+          "total_words": 15750,
+          "average_confidence": 0.89
+        },
+        "currentBudget": {
+          "tokens": 8750,
+          "computeTime": 3750,
+          "memory": 157286400,
+          "apiCalls": 5,
+          "monetaryCost": 0.875
+        },
+        "safetyState": {
+          "violations": [],
+          "activeConstraints": [
+            {
+              "id": "budget-limit",
+              "type": "resource_limit",
+              "description": "Enforce strict budget constraints",
+              "parameters": {
+                "maxTokens": 10000,
+                "maxCost": 1.0,
+                "maxMemory": 104857600,
+                "maxApiCalls": 10
+              },
+              "severity": "error"
+            }
+          ],
+          "riskLevel": "high",
+          "lastCheck": "2024-12-08T16:45:03.855Z"
+        }
+      },
+      "contextAfter": {
+        "variables": {
+          "batch_size": 5,
+          "processing_mode": "high_quality",
+          "priority": "urgent",
+          "processed_documents": 5,
+          "total_words": 15750,
+          "average_confidence": 0.89,
+          "processing_cancelled": true,
+          "cancellation_reason": "budget_exceeded"
+        },
+        "currentBudget": {
+          "tokens": 8750,
+          "computeTime": 4170,
+          "memory": 158334976,
+          "apiCalls": 5,
+          "monetaryCost": 0.88
+        },
+        "safetyState": {
+          "violations": [
+            {
+              "constraintId": "budget-limit",
+              "severity": "error",
+              "message": "Monetary cost budget exceeded",
+              "timestamp": "2024-12-08T16:45:04.050Z",
+              "stepId": "advanced-ner-analysis"
+            },
+            {
+              "constraintId": "budget-limit",
+              "severity": "error",
+              "message": "Memory budget exceeded",
+              "timestamp": "2024-12-08T16:45:04.055Z",
+              "stepId": "advanced-ner-analysis"
+            }
+          ],
+          "activeConstraints": [
+            {
+              "id": "budget-limit",
+              "type": "resource_limit",
+              "description": "Enforce strict budget constraints",
+              "parameters": {
+                "maxTokens": 10000,
+                "maxCost": 1.0,
+                "maxMemory": 104857600,
+                "maxApiCalls": 10
+              },
+              "severity": "error"
+            }
+          ],
+          "riskLevel": "critical",
+          "lastCheck": "2024-12-08T16:45:04.320Z"
+        }
+      },
+      "costIncurred": {
+        "tokens": 0,
+        "computeTime": 420,
+        "memory": 1048576,
+        "apiCalls": 0,
+        "monetaryCost": 0.005
+      }
+    }
+  ],
+  "totalCost": {
+    "tokens": 8750,
+    "computeTime": 4170,
+    "memory": 158334976,
+    "apiCalls": 5,
+    "monetaryCost": 0.88
+  },
+  "contextEvolution": [
+    {
+      "timestamp": "2024-12-08T16:45:00.000Z",
+      "variables": {
+        "batch_size": 5,
+        "processing_mode": "high_quality",
+        "priority": "urgent"
+      },
+      "currentBudget": {
+        "tokens": 0,
+        "computeTime": 0,
+        "memory": 0,
+        "apiCalls": 0,
+        "monetaryCost": 0
+      },
+      "riskLevel": "low"
+    },
+    {
+      "timestamp": "2024-12-08T16:45:03.850Z",
+      "variables": {
+        "batch_size": 5,
+        "processing_mode": "high_quality",
+        "priority": "urgent",
+        "processed_documents": 5,
+        "total_words": 15750,
+        "average_confidence": 0.89
+      },
+      "currentBudget": {
+        "tokens": 8750,
+        "computeTime": 3750,
+        "memory": 157286400,
+        "apiCalls": 5,
+        "monetaryCost": 0.875
+      },
+      "riskLevel": "high"
+    },
+    {
+      "timestamp": "2024-12-08T16:45:04.320Z",
+      "variables": {
+        "batch_size": 5,
+        "processing_mode": "high_quality",
+        "priority": "urgent",
+        "processed_documents": 5,
+        "total_words": 15750,
+        "average_confidence": 0.89,
+        "processing_cancelled": true,
+        "cancellation_reason": "budget_exceeded"
+      },
+      "currentBudget": {
+        "tokens": 8750,
+        "computeTime": 4170,
+        "memory": 158334976,
+        "apiCalls": 5,
+        "monetaryCost": 0.88
+      },
+      "riskLevel": "critical"
+    }
+  ],
+  "decisionPoints": [
+    {
+      "stepId": "advanced-ner-analysis",
+      "timestamp": "2024-12-08T16:45:04.000Z",
+      "condition": {
+        "type": "custom",
+        "description": "Budget check before resource-intensive operation"
+      },
+      "evaluationResult": false,
+      "context": {
+        "remainingBudget": {
+          "tokens": 1250,
+          "monetaryCost": 0.125,
+          "memory": -52571200
+        },
+        "projectedCost": {
+          "tokens": 2450,
+          "monetaryCost": 0.35,
+          "memory": 52428800
+        },
+        "budgetViolation": true,
+        "violatedMetrics": ["monetaryCost", "memory"]
+      },
+      "alternativePaths": ["reduce-scope", "request-budget-increase", "defer-processing"],
+      "chosenPath": "cancel-execution"
+    }
+  ],
+  "parallelBranches": [],
+  "budgetViolations": [
+    {
+      "timestamp": "2024-12-08T16:45:04.050Z",
+      "stepId": "advanced-ner-analysis",
+      "violationType": "monetary_cost",
+      "severity": "error",
+      "budgetLimit": 1.0,
+      "projectedUsage": 1.225,
+      "currentUsage": 0.875,
+      "requestedAmount": 0.35,
+      "actionTaken": "cancel_step",
+      "details": {
+        "utilizationAtViolation": 0.875,
+        "projectedUtilization": 1.225,
+        "violationMargin": 0.225
+      }
+    },
+    {
+      "timestamp": "2024-12-08T16:45:04.055Z",
+      "stepId": "advanced-ner-analysis",
+      "violationType": "memory",
+      "severity": "error",
+      "budgetLimit": 104857600,
+      "projectedUsage": 209715200,
+      "currentUsage": 157286400,
+      "requestedAmount": 52428800,
+      "actionTaken": "cancel_step",
+      "details": {
+        "utilizationAtViolation": 1.5,
+        "projectedUtilization": 2.0,
+        "violationMargin": 104857600
+      }
+    }
+  ],
+  "safetyMetrics": {
+    "totalSafetyChecks": 5,
+    "passedChecks": 1,
+    "failedChecks": 2,
+    "warningChecks": 1,
+    "budgetUtilization": {
+      "tokens": 0.875,
+      "cost": 0.88,
+      "memory": 1.51,
+      "apiCalls": 0.5
+    },
+    "riskLevel": "critical",
+    "violations": [
+      {
+        "constraintId": "budget-limit",
+        "severity": "error",
+        "message": "Monetary cost budget exceeded",
+        "timestamp": "2024-12-08T16:45:04.050Z"
+      },
+      {
+        "constraintId": "budget-limit",
+        "severity": "error",
+        "message": "Memory budget exceeded",
+        "timestamp": "2024-12-08T16:45:04.055Z"
+      }
+    ],
+    "enforcementActions": [
+      {
+        "action": "cancel_step",
+        "reason": "budget_exceeded",
+        "timestamp": "2024-12-08T16:45:04.320Z",
+        "stepId": "advanced-ner-analysis"
+      }
+    ]
+  },
+  "replayInfo": {
+    "version": "1.0.0",
+    "replayable": false,
+    "deterministicInputs": {
+      "batchSize": 5,
+      "processingMode": "high_quality",
+      "budgetConstraints": {
+        "maxTokens": 10000,
+        "maxCost": 1.0,
+        "maxMemory": 104857600
+      }
+    },
+    "nonReplayableReason": "Budget constraints violated during execution",
+    "environmentState": {
+      "budgetEnforcement": "strict",
+      "safetyMode": "enabled",
+      "resourceMonitoring": "real-time"
+    },
+    "replayInstructions": [
+      {
+        "stepId": "bulk-ocr-processing",
+        "instruction": "use_recorded",
+        "data": {
+          "recordedResponse": "[BULK_OCR_RESPONSE]"
+        }
+      },
+      {
+        "stepId": "advanced-ner-analysis",
+        "instruction": "skip",
+        "data": {
+          "skipReason": "budget_exceeded",
+          "originalError": "[BUDGET_EXCEEDED_ERROR]"
+        }
+      }
+    ]
+  },
+  "performance": {
+    "executionEfficiency": 0.23,
+    "resourceUtilization": 0.88,
+    "parallelizationOpportunities": 1,
+    "bottlenecks": [
+      {
+        "stepId": "bulk-ocr-processing",
+        "type": "resource-intensive",
+        "impact": "critical",
+        "description": "High memory and cost consumption"
+      }
+    ],
+    "recommendations": [
+      "Implement batch size optimization based on available budget",
+      "Add budget projection and early warning systems",
+      "Consider incremental processing for large datasets",
+      "Implement dynamic resource scaling"
+    ],
+    "failureAnalysis": {
+      "rootCause": "Insufficient budget allocation for resource-intensive workflow",
+      "preventiveMeasures": [
+        "Pre-execution budget estimation",
+        "Adaptive batch sizing",
+        "Progressive resource allocation"
+      ]
+    }
+  }
+}
