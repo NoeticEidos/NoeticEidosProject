@@ -1,0 +1,113 @@
+{
+  "context": {
+    "contextId": "ctx_success_20250808_001",
+    "tenantId": "demo-tenant-prod",
+    "features": {
+      "document_type": "invoice",
+      "priority": "normal",
+      "source_system": "document_processor",
+      "workflow_type": "ocr_ner_route"
+    },
+    "blob": "aW52b2ljZSBkb2N1bWVudCBkYXRh"
+  },
+  "plan": {
+    "planId": "plan_20250808_190202_abc123",
+    "steps": [
+      {
+        "ouType": "ocr",
+        "tool": "tesseract-v5.3.0",
+        "argsJson": "{\"page_ref\":\"sha256:a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456\",\"lang_hint\":\"en\",\"ocr_mode\":\"balanced\",\"resolution_dpi\":300,\"quality_speed_tradeoff\":0.7}",
+        "capabilities": ["image_processing", "text_extraction"],
+        "estCost": 0.05,
+        "estLatencyMs": 2500,
+        "decision": {
+          "logprob": -2.3,
+          "entropy": 1.1,
+          "head": "ocr_branch_1"
+        },
+        "schemaVersion": "ocr:v1",
+        "modelVersion": "tesseract@5.3.0",
+        "modelDigest": "sha256:ocr123456789abcdef"
+      },
+      {
+        "ouType": "ner",
+        "tool": "compromise-v14.10.0",
+        "argsJson": "{\"text\":\"ACME Corporation Invoice #INV-2025-001 Date: 2025-01-15 Amount: $1,247.50 Contact: John Smith Phone: (555) 123-4567\",\"domain_hint\":\"financial\",\"entity_schema_version\":\"v2.1\",\"postproc_thresholds\":{\"min_confidence\":0.75,\"min_entity_length\":2}}",
+        "capabilities": ["text_analysis", "entity_extraction"],
+        "estCost": 0.02,
+        "estLatencyMs": 800,
+        "decision": {
+          "logprob": -1.8,
+          "entropy": 0.9,
+          "head": "ner_branch_1"
+        },
+        "schemaVersion": "ner:v1",
+        "modelVersion": "compromise@14.10.0",
+        "modelDigest": "sha256:ner987654321fedcba"
+      },
+      {
+        "ouType": "route",
+        "tool": "business-rules-v2.1",
+        "argsJson": "{\"entities\":[{\"type\":\"ORG\",\"text\":\"ACME Corporation\",\"span\":{\"start\":0,\"end\":15},\"confidence\":0.92},{\"type\":\"MONEY\",\"text\":\"$1,247.50\",\"span\":{\"start\":67,\"end\":76},\"confidence\":0.98},{\"type\":\"PERSON\",\"text\":\"John Smith\",\"span\":{\"start\":87,\"end\":97},\"confidence\":0.89}],\"ruleset_version\":\"v3.2\",\"business_constraints\":{\"priority_entities\":[\"MONEY\",\"ORG\"],\"risk_tolerance\":\"medium\"}}",
+        "capabilities": ["routing", "decision_making"],
+        "estCost": 0.01,
+        "estLatencyMs": 300,
+        "decision": {
+          "logprob": -1.2,
+          "entropy": 0.7,
+          "head": "route_branch_1"
+        },
+        "schemaVersion": "route:v1",
+        "modelVersion": "business-rules@2.1.0",
+        "modelDigest": "sha256:route456789abcdef012"
+      }
+    ],
+    "predReward": 0.87,
+    "predCost": 0.08,
+    "uncertainty": 0.12,
+    "policySnapshotId": "policy_snapshot_20250808_v42",
+    "signature": {
+      "alg": "HMAC-SHA256",
+      "sig": "YWJjZGVmZ2hpams=",
+      "keyId": "key_001"
+    }
+  },
+  "outcome": {
+    "success": true,
+    "reward": 0.91,
+    "cost": 0.078,
+    "latencyMs": 3247,
+    "failureReason": "",
+    "traceId": "trace_20250808_190205_xyz789",
+    "artifactRef": "artifact://results/successful_execution_001.json",
+    "violations": {
+      "budgetExceeded": false,
+      "depthExceeded": false,
+      "schemaViolation": false,
+      "details": []
+    },
+    "executedSteps": 3,
+    "terminationReason": "completed_successfully"
+  },
+  "replay": {
+    "seed": "replay_seed_20250808_001",
+    "toolVersions": {
+      "tesseract": "5.3.0",
+      "compromise": "14.10.0",
+      "business-rules": "2.1.0"
+    },
+    "modelVersions": {
+      "ocr": "tesseract@5.3.0",
+      "ner": "compromise@14.10.0",
+      "route": "business-rules@2.1.0"
+    },
+    "artifactHashes": {
+      "input_document": "sha256:a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456",
+      "ocr_result": "sha256:b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456a",
+      "ner_result": "sha256:c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456ab",
+      "final_result": "sha256:d4e5f6789012345678901234567890abcdef1234567890abcdef123456abc"
+    }
+  },
+  "ts": "2025-08-08T19:02:05.123Z",
+  "idempotencyKey": "idem_successful_execution_20250808_001"
+}

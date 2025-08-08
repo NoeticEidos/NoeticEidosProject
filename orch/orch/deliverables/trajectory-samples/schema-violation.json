@@ -1,0 +1,77 @@
+{
+  "context": {
+    "contextId": "ctx_schema_violation_003",
+    "tenantId": "demo-tenant-test",
+    "features": {
+      "document_type": "receipt",
+      "priority": "high",
+      "source_system": "mobile_app",
+      "workflow_type": "quick_scan"
+    },
+    "blob": "bW9iaWxlIHJlY2VpcHQgZGF0YQ=="
+  },
+  "plan": {
+    "planId": "plan_20250808_190215_ghi789",
+    "steps": [
+      {
+        "ouType": "ocr",
+        "tool": "tesseract-v5.3.0",
+        "argsJson": "{\"page_ref\":\"invalid-hash-format\",\"lang_hint\":\"invalid-language\",\"ocr_mode\":\"ultra-fast\",\"resolution_dpi\":50,\"quality_speed_tradeoff\":1.5}",
+        "capabilities": ["image_processing", "text_extraction"],
+        "estCost": 0.03,
+        "estLatencyMs": 500,
+        "decision": {
+          "logprob": -2.8,
+          "entropy": 1.3,
+          "head": "ocr_fast"
+        },
+        "schemaVersion": "ocr:v1",
+        "modelVersion": "tesseract@5.3.0",
+        "modelDigest": "sha256:ocr123456789abcdef"
+      }
+    ],
+    "predReward": 0.65,
+    "predCost": 0.03,
+    "uncertainty": 0.18,
+    "policySnapshotId": "policy_snapshot_20250808_v42",
+    "signature": {
+      "alg": "HMAC-SHA256",
+      "sig": "Z2hpamtsbW5vcHFyc3Q=",
+      "keyId": "key_001"
+    }
+  },
+  "outcome": {
+    "success": false,
+    "reward": 0.0,
+    "cost": 0.0,
+    "latencyMs": 45,
+    "failureReason": "Schema validation failed for OCR step arguments",
+    "traceId": "trace_20250808_190215_def789",
+    "artifactRef": "artifact://results/schema_violation_003.json",
+    "violations": {
+      "budgetExceeded": false,
+      "depthExceeded": false,
+      "schemaViolation": true,
+      "details": [
+        "OCR step validation failed against schema ocr:v1",
+        "Field 'page_ref': does not match pattern '^sha256:[a-f0-9]{64}$', got 'invalid-hash-format'",
+        "Field 'lang_hint': must be one of [\"en\", \"es\", \"fr\", \"de\", \"auto\"], got 'invalid-language'",
+        "Field 'ocr_mode': must be one of [\"fast\", \"balanced\", \"accurate\"], got 'ultra-fast'",
+        "Field 'resolution_dpi': must be between 150 and 600, got 50",
+        "Field 'quality_speed_tradeoff': must be between 0.0 and 1.0, got 1.5"
+      ]
+    },
+    "executedSteps": 0,
+    "terminationReason": "schema_validation_failed"
+  },
+  "replay": {
+    "seed": "replay_seed_20250808_003",
+    "toolVersions": {},
+    "modelVersions": {},
+    "artifactHashes": {
+      "validation_error": "sha256:h3i4j5k6l7m89012345678901234567890hgfedc1234567890hgfedc12345"
+    }
+  },
+  "ts": "2025-08-08T19:02:15.789Z",
+  "idempotencyKey": "idem_schema_violation_20250808_003"
+}

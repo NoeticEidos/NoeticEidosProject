@@ -1,42 +1,98 @@
-import { ToolResult, RouteDecision } from '../types/index.js';
-import { SchemaValidator, routeArgsSchema, RouteArgs } from '../utils/validation.js';
+import { LRUCache } from 'lru-cache';
+import { createHash } from 'crypto';
+import { ToolResult, RouteDecision, BusinessConstraints, RulesetConfig, PerformanceLogger } from '../types/index.js';
+import { EnhancedValidator, RouteArgs } from '../utils/validation.js';
 import { CostEstimator } from '../utils/cost-estimator.js';
-import { logger, PerformanceLogger } from '../utils/logger.js';
+import { Logger } from '../utils/logger.js';
+
+const logger = new Logger('RouteTool', {
+  level: 'info',
+  format: 'json',
+  logRequests: true,
+  logErrors: true,
+  logPerformance: true,
+  maxLogSize: 10000
+});
 
 interface RouteMatch {
   routeId: string;
   score: number;
   matchType: 'exact' | 'pattern' | 'partial';
+  weight: number;
   matchDetails: {
     pathMatch: boolean;
     methodMatch: boolean;
     headerMatch: boolean;
     queryMatch: boolean;
     bodyMatch: boolean;
+    customConditions: boolean;
+  };
+  businessScore?: number;
+  riskAssessment?: {
+    level: 'low' | 'medium' | 'high';
+    factors: string[];
   };
 }
 
+interface RuleEngineContext {
+  request: RouteArgs['request'];
+  routes: RouteArgs['routes'];
+  businessConstraints?: BusinessConstraints;
+  rulesetConfig?: RulesetConfig;
+  timestamp: number;
+  requestId: string;
+}
+
 export class RouteTool {
-  private static routeCache = new Map<string, RouteDecision>();
+  private static routeCache = new LRUCache<string, RouteDecision>({
+    max: 2000,
+    ttl: 1000 * 60 * 60 // 1 hour default
+  });
+  
+  private static ruleEngineCache = new LRUCache<string, RouteMatch[]>({
+    max: 500,
+    ttl: 1000 * 60 * 10 // 10 minutes
+  });
+  
+  private static performanceMetrics = new Map<string, {
+    avgLatency: number;
+    successRate: number;
+    lastUpdated: number;
+    requestCount: number;
+  }>();
 
   /**
-   * Performs rule-based routing with intelligent matching
+   * Performs advanced rule-based routing with business constraint support
    */
   static async execute(args: unknown): Promise<ToolResult<RouteDecision>> {
     const perfLogger = new PerformanceLogger('Routing');
+    const requestId = this.generateRequestId();
     
     try {
-      // Validate arguments
-      const validation = SchemaValidator.validate(routeArgsSchema, args);
+      // Enhanced argument validation
+      const validation = EnhancedValidator.validateRouteArgs(args);
       if (!validation.valid) {
-        return SchemaValidator.createErrorResponse(validation.errors);
+        return EnhancedValidator.createErrorResponse(validation.errors, 'Routing');
       }
 
       const { request, routes, options } = validation.data!;
       
-      // Calculate request complexity for cost estimation
-      const requestComplexity = this.calculateRequestComplexity(request);
-      const costEstimate = CostEstimator.estimateRouting(routes.length, requestComplexity);
+      // Create rule engine context
+      const context: RuleEngineContext = {
+        request,
+        routes,
+        businessConstraints: options.businessConstraints,
+        rulesetConfig: options.rulesetConfig,
+        timestamp: Date.now(),
+        requestId
+      };
+      
+      // Enhanced request analysis
+      const requestComplexity = CostEstimator.calculateRequestComplexity(request);
+      const costEstimate = CostEstimator.estimateRouting(routes.length, requestComplexity, options);
+      
+      // Risk assessment for business constraints
+      const riskAssessment = this.assessRequestRisk(request, context);
 
       logger.info('Starting route matching', { 
         requestPath: request.path,
@@ -46,59 +102,51 @@ export class RouteTool {
         costEstimate 
       });
 
-      // Check cache if enabled
-      const cacheKey = options.enableCaching ? this.generateCacheKey(request, routes) : null;
-      if (cacheKey && this.routeCache.has(cacheKey)) {
-        const cached = this.routeCache.get(cacheKey)!;
-        const processingTime = perfLogger.end(true, { cached: true });
+      // Enhanced caching with TTL and strategy support
+      let cacheKey: string | null = null;
+      if (options.enableCaching) {
+        const ttl = this.getCacheTTL(options.cacheStrategy, options.cacheTTL);
+        cacheKey = this.generateAdvancedCacheKey(context);
         
-        return {
-          success: true,
-          data: cached,
-          metadata: {
-            processingTime,
-            costEstimate: { ...costEstimate, tokens: 0, computeUnits: 0 },
-            confidence: cached.confidence
-          }
-        };
-      }
-
-      // Evaluate all routes
-      const matches = await this.evaluateRoutes(request, routes);
-      
-      // Apply routing strategy
-      let selectedMatch: RouteMatch | null = null;
-      
-      switch (options.strategy) {
-        case 'exact-match':
-          selectedMatch = this.findExactMatch(matches);
-          break;
-        case 'pattern-match':
-          selectedMatch = this.findBestPatternMatch(matches);
-          break;
-        case 'priority':
-        default:
-          selectedMatch = this.findPriorityMatch(matches, routes);
-          break;
-      }
-
-      // If no match found, try fallback
-      if (!selectedMatch && options.fallbackRoute) {
-        const fallbackRoute = routes.find(r => r.id === options.fallbackRoute);
-        if (fallbackRoute) {
-          selectedMatch = {
-            routeId: fallbackRoute.id,
-            score: 0.3,
-            matchType: 'partial',
-            matchDetails: {
-              pathMatch: false,
-              methodMatch: false,
-              headerMatch: false,
-              queryMatch: false,
-              bodyMatch: false
+        // Check cache with validation
+        const cached = this.getFromCache(cacheKey, options.cacheStrategy);
+        if (cached && this.validateCachedResult(cached, context)) {
+          const processingTime = perfLogger.end(true, { cached: true, cacheStrategy: options.cacheStrategy });
+          
+          logger.info('Route decision retrieved from cache', { 
+            cacheKey: cacheKey.substring(0, 16) + '...', 
+            strategy: options.cacheStrategy,
+            confidence: cached.confidence 
+          });
+          
+          return {
+            success: true,
+            data: cached,
+            metadata: {
+              processingTime,
+              costEstimate: { ...costEstimate, tokens: 0, computeUnits: 0 },
+              confidence: cached.confidence,
+              cached: true
             }
           };
         }
+      }
+
+      // Advanced rule engine evaluation
+      const matches = await this.executeRuleEngine(context);
+      
+      // Enhanced route selection with business constraints
+      let selectedMatch: RouteMatch | null = null;
+      
+      if (options.businessConstraints) {
+        selectedMatch = this.selectRouteWithBusinessConstraints(matches, context);
+      } else {
+        selectedMatch = this.selectRouteByStrategy(matches, options.strategy, routes);
+      }
+
+      // Enhanced fallback handling with ruleset support
+      if (!selectedMatch) {
+        selectedMatch = this.handleFallback(context, matches);
       }
 
       if (!selectedMatch) {
@@ -113,33 +161,24 @@ export class RouteTool {
         };
       }
 
-      // Generate alternatives (top 3 other matches)
-      const alternatives = matches
-        .filter(m => m.routeId !== selectedMatch!.routeId)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 3)
-        .map(match => ({
-          route: match.routeId,
-          score: Math.round(match.score * 100) / 100,
-          reason: this.generateMatchReason(match)
-        }));
+      // Enhanced alternatives with business impact analysis
+      const alternatives = this.generateAlternatives(matches, selectedMatch!, context);
 
       const routeDecision: RouteDecision = {
         selectedRoute: selectedMatch.routeId,
         confidence: Math.round(selectedMatch.score * 100) / 100,
-        reasoning: this.generateMatchReason(selectedMatch),
-        alternatives
+        reasoning: this.generateAdvancedReasoning(selectedMatch, context),
+        alternatives,
+        businessConstraints: this.generateBusinessConstraintsInfo(selectedMatch, context)
       };
 
-      // Cache result if enabled
-      if (cacheKey) {
-        this.routeCache.set(cacheKey, routeDecision);
-        // Limit cache size
-        if (this.routeCache.size > 1000) {
-          const firstKey = this.routeCache.keys().next().value;
-          this.routeCache.delete(firstKey);
-        }
+      // Enhanced caching with strategy support
+      if (cacheKey && options.enableCaching) {
+        await this.storeToCache(cacheKey, routeDecision, options.cacheStrategy, context);
       }
+      
+      // Update performance metrics
+      this.updatePerformanceMetrics(selectedMatch.routeId, perfLogger.getMetrics());
 
       const processingTime = perfLogger.end(true);
 
@@ -161,14 +200,24 @@ export class RouteTool {
 
     } catch (error) {
       const processingTime = perfLogger.end(false, { error: error.message });
-      logger.error('Route matching failed', { error });
+      logger.error('Route matching failed', error, { 
+        requestPath: args && typeof args === 'object' && 'request' in args ? (args as any).request?.path : 'unknown',
+        routeCount: args && typeof args === 'object' && 'routes' in args ? (args as any).routes?.length : 0,
+        requestId
+      });
 
+      // Enhanced error categorization
+      const errorCategory = this.categorizeError(error);
+      
       return {
         success: false,
-        error: `Route matching failed: ${error.message}`,
+        error: `Route matching failed (${errorCategory}): ${error.message}`,
         metadata: {
           processingTime,
-          costEstimate: CostEstimator.estimateRouting(0, 0)
+          costEstimate: CostEstimator.estimateRouting(0, 0, {}),
+          errorCategory,
+          retryable: ['resource', 'cache'].includes(errorCategory),
+          requestId
         }
       };
     }

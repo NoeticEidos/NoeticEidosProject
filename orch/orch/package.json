@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "test": "jest",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest --config=jest.config.mjs",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts",
@@ -19,7 +19,9 @@
     "tesseract.js": "^4.1.4",
     "compromise": "^14.10.0",
     "zod": "^3.22.4",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "lru-cache": "^10.2.0",
+    "sharp": "^0.33.2"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

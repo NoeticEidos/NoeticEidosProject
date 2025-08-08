@@ -1,0 +1,101 @@
+{
+  "context": {
+    "contextId": "ctx_fallback_004",
+    "tenantId": "demo-tenant-prod",
+    "features": {
+      "document_type": "form",
+      "priority": "medium",
+      "source_system": "web_portal",
+      "workflow_type": "form_processing",
+      "fallback_enabled": "true"
+    },
+    "blob": "d2ViIGZvcm0gZGF0YSB3aXRoIGZhbGxiYWNr"
+  },
+  "plan": {
+    "planId": "plan_20250808_190220_jkl012",
+    "steps": [
+      {
+        "ouType": "ocr",
+        "tool": "tesseract-v5.3.0",
+        "argsJson": "{\"page_ref\":\"sha256:j4k5l6m7n8o9012345678901234567890jihgfe1234567890jihgfe123456\",\"lang_hint\":\"en\",\"ocr_mode\":\"balanced\",\"resolution_dpi\":300,\"quality_speed_tradeoff\":0.6}",
+        "capabilities": ["image_processing", "text_extraction"],
+        "estCost": 0.04,
+        "estLatencyMs": 2000,
+        "decision": {
+          "logprob": -2.1,
+          "entropy": 1.0,
+          "head": "ocr_standard"
+        },
+        "schemaVersion": "ocr:v1",
+        "modelVersion": "tesseract@5.3.0",
+        "modelDigest": "sha256:ocr123456789abcdef"
+      },
+      {
+        "ouType": "ner",
+        "tool": "compromise-v14.10.0",
+        "argsJson": "{\"text\":\"Fallback processing for web form data\",\"domain_hint\":\"general\",\"entity_schema_version\":\"v2.1\",\"postproc_thresholds\":{\"min_confidence\":0.6,\"min_entity_length\":3}}",
+        "capabilities": ["text_analysis", "entity_extraction"],
+        "estCost": 0.02,
+        "estLatencyMs": 600,
+        "decision": {
+          "logprob": -1.7,
+          "entropy": 0.8,
+          "head": "ner_fallback"
+        },
+        "schemaVersion": "ner:v1",
+        "modelVersion": "compromise@14.10.0",
+        "modelDigest": "sha256:ner987654321fedcba"
+      }
+    ],
+    "predReward": 0.72,
+    "predCost": 0.06,
+    "uncertainty": 0.15,
+    "policySnapshotId": "policy_snapshot_20250808_v42",
+    "signature": {
+      "alg": "HMAC-SHA256",
+      "sig": "amtsbW5vcHFyc3R1dndl",
+      "keyId": "key_001"
+    }
+  },
+  "outcome": {
+    "success": true,
+    "reward": 0.68,
+    "cost": 0.058,
+    "latencyMs": 3100,
+    "failureReason": "",
+    "traceId": "trace_20250808_190223_ghi012",
+    "artifactRef": "artifact://results/fallback_behavior_004.json",
+    "violations": {
+      "budgetExceeded": false,
+      "depthExceeded": false,
+      "schemaViolation": false,
+      "details": [
+        "Circuit breaker opened for primary policy service connection",
+        "Fallback to cached policy responses activated",
+        "Reduced processing mode enabled with simplified NER",
+        "Workflow completed using fallback mechanisms"
+      ]
+    },
+    "executedSteps": 2,
+    "terminationReason": "completed_with_fallback"
+  },
+  "replay": {
+    "seed": "replay_seed_20250808_004",
+    "toolVersions": {
+      "tesseract": "5.3.0",
+      "compromise": "14.10.0"
+    },
+    "modelVersions": {
+      "ocr": "tesseract@5.3.0",
+      "ner": "compromise@14.10.0"
+    },
+    "artifactHashes": {
+      "input_document": "sha256:j4k5l6m7n8o9012345678901234567890jihgfe1234567890jihgfe123456",
+      "fallback_ocr_result": "sha256:k5l6m7n8o9p0123456789012345678901kjihgf1234567890kjihgf123456",
+      "fallback_ner_result": "sha256:l6m7n8o9p0q1234567890123456789012lkjihg1234567890lkjihg123456",
+      "circuit_breaker_log": "sha256:m7n8o9p0q1r2345678901234567890123mlkjih1234567890mlkjih123456"
+    }
+  },
+  "ts": "2025-08-08T19:02:23.012Z",
+  "idempotencyKey": "idem_fallback_behavior_20250808_004"
+}

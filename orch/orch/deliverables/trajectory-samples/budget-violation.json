@@ -1,0 +1,111 @@
+{
+  "context": {
+    "contextId": "ctx_budget_violation_002",
+    "tenantId": "demo-tenant-dev",
+    "features": {
+      "document_type": "contract",
+      "priority": "low",
+      "source_system": "batch_processor",
+      "workflow_type": "complex_analysis"
+    },
+    "blob": "Y29tcGxleCBjb250cmFjdCBkb2N1bWVudA=="
+  },
+  "plan": {
+    "planId": "plan_20250808_190210_def456",
+    "steps": [
+      {
+        "ouType": "ocr",
+        "tool": "tesseract-v5.3.0",
+        "argsJson": "{\"page_ref\":\"sha256:f1e2d3c4b5a6789012345678901234567890fedcba1234567890fedcba12345\",\"lang_hint\":\"en\",\"ocr_mode\":\"accurate\",\"resolution_dpi\":600,\"quality_speed_tradeoff\":1.0}",
+        "capabilities": ["image_processing", "text_extraction"],
+        "estCost": 0.25,
+        "estLatencyMs": 8000,
+        "decision": {
+          "logprob": -3.1,
+          "entropy": 1.4,
+          "head": "ocr_intensive"
+        },
+        "schemaVersion": "ocr:v1",
+        "modelVersion": "tesseract@5.3.0",
+        "modelDigest": "sha256:ocr123456789abcdef"
+      },
+      {
+        "ouType": "ner",
+        "tool": "compromise-v14.10.0",
+        "argsJson": "{\"text\":\"Complex legal document with extensive entity analysis...\",\"domain_hint\":\"legal\",\"entity_schema_version\":\"v2.1\",\"postproc_thresholds\":{\"min_confidence\":0.85,\"min_entity_length\":1}}",
+        "capabilities": ["text_analysis", "entity_extraction"],
+        "estCost": 0.15,
+        "estLatencyMs": 3500,
+        "decision": {
+          "logprob": -2.7,
+          "entropy": 1.2,
+          "head": "ner_detailed"
+        },
+        "schemaVersion": "ner:v1",
+        "modelVersion": "compromise@14.10.0",
+        "modelDigest": "sha256:ner987654321fedcba"
+      },
+      {
+        "ouType": "route",
+        "tool": "business-rules-v2.1",
+        "argsJson": "{\"entities\":[{\"type\":\"ORG\",\"text\":\"Legal Corp\",\"span\":{\"start\":45,\"end\":55},\"confidence\":0.94}],\"ruleset_version\":\"v3.2\",\"business_constraints\":{\"priority_entities\":[\"PERSON\",\"ORG\",\"DATE\"],\"risk_tolerance\":\"low\"}}",
+        "capabilities": ["routing", "decision_making"],
+        "estCost": 0.08,
+        "estLatencyMs": 1200,
+        "decision": {
+          "logprob": -1.9,
+          "entropy": 0.8,
+          "head": "route_complex"
+        },
+        "schemaVersion": "route:v1",
+        "modelVersion": "business-rules@2.1.0",
+        "modelDigest": "sha256:route456789abcdef012"
+      }
+    ],
+    "predReward": 0.75,
+    "predCost": 0.48,
+    "uncertainty": 0.22,
+    "policySnapshotId": "policy_snapshot_20250808_v42",
+    "signature": {
+      "alg": "HMAC-SHA256",
+      "sig": "ZGVmZ2hpamtsbW5vcA==",
+      "keyId": "key_001"
+    }
+  },
+  "outcome": {
+    "success": false,
+    "reward": 0.0,
+    "cost": 0.31,
+    "latencyMs": 8945,
+    "failureReason": "Budget limit exceeded during OCR step execution",
+    "traceId": "trace_20250808_190213_abc456",
+    "artifactRef": "artifact://results/budget_violation_002.json",
+    "violations": {
+      "budgetExceeded": true,
+      "depthExceeded": false,
+      "schemaViolation": false,
+      "details": [
+        "Cost budget of $0.30 exceeded. Current cost: $0.31",
+        "Step 1 (OCR) consumed $0.31, exceeding remaining budget of $0.05",
+        "Execution terminated at step 1 of 3"
+      ]
+    },
+    "executedSteps": 1,
+    "terminationReason": "budget_exhausted"
+  },
+  "replay": {
+    "seed": "replay_seed_20250808_002",
+    "toolVersions": {
+      "tesseract": "5.3.0"
+    },
+    "modelVersions": {
+      "ocr": "tesseract@5.3.0"
+    },
+    "artifactHashes": {
+      "input_document": "sha256:f1e2d3c4b5a6789012345678901234567890fedcba1234567890fedcba12345",
+      "partial_ocr_result": "sha256:g2h3i4j5k6l789012345678901234567890gfedcb1234567890gfedcb12345"
+    }
+  },
+  "ts": "2025-08-08T19:02:13.456Z",
+  "idempotencyKey": "idem_budget_violation_20250808_002"
+}

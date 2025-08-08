@@ -1,33 +1,124 @@
 import nlp from 'compromise';
-import { ToolResult, NERResult, NEREntity } from '../types/index.js';
-import { SchemaValidator, nerArgsSchema, NERArgs } from '../utils/validation.js';
+import { LRUCache } from 'lru-cache';
+import { createHash } from 'crypto';
+import { ToolResult, NERResult, NEREntity, DomainConfig, PerformanceLogger } from '../types/index.js';
+import { EnhancedValidator, NERArgs } from '../utils/validation.js';
 import { CostEstimator } from '../utils/cost-estimator.js';
-import { logger, PerformanceLogger } from '../utils/logger.js';
+import { Logger } from '../utils/logger.js';
 
 // Extend compromise with additional plugins
-import compromiseDates from 'compromise/plugins/dates';
-import compromiseNumbers from 'compromise/plugins/numbers';
-
-nlp.extend(compromiseDates);
-nlp.extend(compromiseNumbers);
+// Note: Import paths for compromise plugins need to be handled differently
+const logger = new Logger('NERTool', {
+  level: 'info',
+  format: 'json',
+  logRequests: true,
+  logErrors: true,
+  logPerformance: true,
+  maxLogSize: 10000
+});
 
 export class NERTool {
+  private static entityCache = new LRUCache<string, NEREntity[]>({
+    max: 500,
+    ttl: 1000 * 60 * 15 // 15 minutes
+  });
+
+  private static domainPatterns: Record<string, Record<string, RegExp[]>> = {
+    legal: {
+      caseNumbers: [
+        /\b(?:Case|Docket)\s+No\.?\s*[:#]?\s*([A-Z0-9-]+(?:\([A-Z0-9]+\))?)/gi,
+        /\b(\d{1,2}[-:]\d{4}[-:]cv[-:]\d+)/gi,
+        /\b([A-Z]{1,3}\d{4,8})/g
+      ],
+      statutes: [
+        /\b(\d+\s+U\.?S\.?C\.?\s*§\s*\d+(?:\.\d+)*)/gi,
+        /\b(\d+\s+C\.?F\.?R\.?\s*§\s*\d+(?:\.\d+)*)/gi,
+        /\bSection\s+(\d+(?:\.\d+)*)/gi
+      ],
+      parties: [
+        /\b([A-Z][a-z]+\s+(?:[A-Z][a-z]+\s+)*(?:Inc\.|Corp\.|LLC|Ltd\.|Co\.))\s+v\.\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/gi,
+        /\bPlaintiff(?:s)?[\s:]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/gi,
+        /\bDefendant(?:s)?[\s:]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/gi
+      ]
+    },
+    medical: {
+      medications: [
+        /\b([A-Z][a-z]+(?:mab|nib|zole|pril|sartan|statin))\b/gi,
+        /\b(acetaminophen|ibuprofen|aspirin|metformin|lisinopril|atorvastatin|metoprolol|amlodipine|omeprazole|levothyroxine)\b/gi
+      ],
+      symptoms: [
+        /\b(chest pain|shortness of breath|nausea|vomiting|dizziness|headache|fatigue|fever|cough|abdominal pain)\b/gi,
+        /\b(hypertension|diabetes|asthma|depression|anxiety|COPD|CHF|MI|CVA|DVT)\b/gi
+      ],
+      diagnoses: [
+        /\b([A-Z]\d{2}(?:\.\d{1,3})?)[\s-]([A-Za-z\s,]+)/g, // ICD codes
+        /\b(Type [12] diabetes|myocardial infarction|congestive heart failure|chronic obstructive pulmonary disease)\b/gi
+      ]
+    },
+    financial: {
+      currencies: [
+        /\$([\d,]+(?:\.\d{2})?)/g,
+        /\b(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(USD|EUR|GBP|JPY|CAD)/gi
+      ],
+      tickers: [
+        /\b([A-Z]{1,5})\s*(?:stock|shares?|equity)/gi,
+        /\$([A-Z]{1,5})\b/g
+      ],
+      companies: [
+        /\b([A-Z][a-zA-Z\s&]+(?:Inc\.|Corp\.|LLC|Ltd\.|Co\.|Corporation|Company|Group))\b/g,
+        /\b(Apple|Microsoft|Amazon|Google|Facebook|Tesla|Berkshire Hathaway|JPMorgan|Bank of America)\b/gi
+      ]
+    }
+  };
+
   /**
-   * Performs Named Entity Recognition using compromise.js with confidence scoring
+   * Performs Named Entity Recognition with domain-specific enhancements
    */
   static async execute(args: unknown): Promise<ToolResult<NERResult>> {
     const perfLogger = new PerformanceLogger('NER');
     
     try {
-      // Validate arguments
-      const validation = SchemaValidator.validate(nerArgsSchema, args);
+      // Enhanced argument validation
+      const validation = EnhancedValidator.validateNERArgs(args);
       if (!validation.valid) {
-        return SchemaValidator.createErrorResponse(validation.errors);
+        return EnhancedValidator.createErrorResponse(validation.errors, 'NER');
       }
 
       const { text, options } = validation.data!;
       
-      // Estimate costs
+      // Enhanced caching with domain-specific keys
+      const cacheKey = options.domain !== 'general' 
+        ? this.generateDomainCacheKey(text, options)
+        : this.generateCacheKey(text, options);
+        
+      const cached = this.entityCache.get(cacheKey);
+      if (cached) {
+        const processingTime = perfLogger.end(true, { cached: true });
+        logger.info('NER result retrieved from cache', { 
+          cacheKey: cacheKey.substring(0, 16) + '...', 
+          entityCount: cached.length 
+        });
+        
+        return {
+          success: true,
+          data: {
+            entities: cached,
+            totalEntities: cached.length,
+            processingStats: {
+              wordsProcessed: text.split(/\s+/).length,
+              entitiesFound: cached.length,
+              averageConfidence: cached.reduce((sum, entity) => sum + entity.confidence, 0) / cached.length
+            }
+          },
+          metadata: {
+            processingTime,
+            costEstimate: { tokens: 0, computeUnits: 0, estimatedDurationMs: 0, complexity: 'low' },
+            confidence: cached.reduce((sum, entity) => sum + entity.confidence, 0) / cached.length
+          }
+        };
+      }
+      
+      // Accurate cost estimation
       const costEstimate = CostEstimator.estimateNER(text.length, options);
 
       logger.info('Starting NER processing', { 
@@ -36,104 +127,201 @@ export class NERTool {
         costEstimate 
       });
 
-      // Process text with compromise
-      const doc = nlp(text);
-      const entities: NEREntity[] = [];
+      // Enhanced text processing with preprocessing
+      const preprocessedText = this.preprocessText(text, options);
+      const doc = nlp(preprocessedText);
+      let entities: NEREntity[] = [];
+      
+      // Domain-specific entity extraction
+      if (options.domain !== 'general' && options.domainConfig) {
+        const domainEntities = await this.extractDomainSpecificEntities(
+          preprocessedText, 
+          options.domain, 
+          options.domainConfig[options.domain]
+        );
+        entities.push(...domainEntities);
+        
+        logger.debug('Domain-specific entities extracted', { 
+          domain: options.domain, 
+          count: domainEntities.length 
+        });
+      }
 
-      // Extract different entity types based on options
+      // Enhanced person extraction with context analysis
       if (options.extractPersons) {
         const people = doc.people().out('array');
-        people.forEach((person: string, index: number) => {
-          const match = doc.match(person);
-          if (match.found) {
-            const confidence = this.calculateConfidence(person, 'PERSON');
+        for (const person of people) {
+          const matches = this.findEntityOccurrences(preprocessedText, person, options.contextWindow);
+          
+          for (const match of matches) {
+            const confidence = this.calculateEnhancedConfidence(
+              person, 
+              'PERSON', 
+              match.context, 
+              options
+            );
+            
             if (confidence >= options.confidenceThreshold) {
               entities.push({
                 text: person,
                 label: 'PERSON',
-                start: match.offset().start,
-                end: match.offset().start + person.length,
-                confidence
+                start: match.start,
+                end: match.end,
+                confidence,
+                domain: options.domain !== 'general' ? options.domain : undefined
               });
             }
           }
-        });
+        }
       }
 
       if (options.extractOrganizations) {
         const orgs = doc.organizations().out('array');
-        orgs.forEach((org: string) => {
-          const match = doc.match(org);
-          if (match.found) {
-            const confidence = this.calculateConfidence(org, 'ORGANIZATION');
+        for (const org of orgs) {
+          const matches = this.findEntityOccurrences(preprocessedText, org, options.contextWindow);
+          
+          for (const match of matches) {
+            const confidence = this.calculateEnhancedConfidence(
+              org, 
+              'ORGANIZATION', 
+              match.context, 
+              options
+            );
+            
             if (confidence >= options.confidenceThreshold) {
               entities.push({
                 text: org,
                 label: 'ORGANIZATION',
-                start: match.offset().start,
-                end: match.offset().start + org.length,
-                confidence
+                start: match.start,
+                end: match.end,
+                confidence,
+                domain: options.domain !== 'general' ? options.domain : undefined
               });
             }
           }
-        });
+        }
       }
 
       if (options.extractPlaces) {
         const places = doc.places().out('array');
-        places.forEach((place: string) => {
-          const match = doc.match(place);
-          if (match.found) {
-            const confidence = this.calculateConfidence(place, 'LOCATION');
+        for (const place of places) {
+          const matches = this.findEntityOccurrences(preprocessedText, place, options.contextWindow);
+          
+          for (const match of matches) {
+            const confidence = this.calculateEnhancedConfidence(
+              place, 
+              'LOCATION', 
+              match.context, 
+              options
+            );
+            
             if (confidence >= options.confidenceThreshold) {
               entities.push({
                 text: place,
                 label: 'LOCATION',
-                start: match.offset().start,
-                end: match.offset().start + place.length,
-                confidence
+                start: match.start,
+                end: match.end,
+                confidence,
+                domain: options.domain !== 'general' ? options.domain : undefined
               });
             }
           }
-        });
+        }
       }
 
       if (options.extractDates) {
-        const dates = doc.dates().out('array');
-        dates.forEach((date: string) => {
-          const match = doc.match(date);
-          if (match.found) {
-            const confidence = this.calculateConfidence(date, 'DATE');
+        // Enhanced date extraction with multiple patterns
+        const datePatterns = [
+          /\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b/g,
+          /\b(\d{4}[-]\d{1,2}[-]\d{1,2})\b/g,
+          /\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4})\b/gi,
+          /\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4})\b/gi
+        ];
+        
+        for (const pattern of datePatterns) {
+          let match;
+          while ((match = pattern.exec(preprocessedText)) !== null) {
+            const dateText = match[1];
+            const confidence = this.calculateEnhancedConfidence(
+              dateText,
+              'DATE',
+              preprocessedText.substring(Math.max(0, match.index - options.contextWindow), 
+                                      Math.min(preprocessedText.length, match.index + dateText.length + options.contextWindow)),
+              options
+            );
+            
+            if (confidence >= options.confidenceThreshold) {
+              entities.push({
+                text: dateText,
+                label: 'DATE',
+                start: match.index,
+                end: match.index + dateText.length,
+                confidence,
+                domain: options.domain !== 'general' ? options.domain : undefined
+              });
+            }
+          }
+        }
+        
+        // Also use compromise for additional date detection
+        const compromiseDates = doc.dates().out('array');
+        for (const date of compromiseDates) {
+          const matches = this.findEntityOccurrences(preprocessedText, date, options.contextWindow);
+          
+          for (const match of matches) {
+            const confidence = this.calculateEnhancedConfidence(
+              date, 
+              'DATE', 
+              match.context, 
+              options
+            ) + 0.2; // Boost compromise.js dates
+            
             if (confidence >= options.confidenceThreshold) {
               entities.push({
                 text: date,
                 label: 'DATE',
-                start: match.offset().start,
-                end: match.offset().start + date.length,
-                confidence
+                start: match.start,
+                end: match.end,
+                confidence: Math.min(confidence, 1),
+                domain: options.domain !== 'general' ? options.domain : undefined
               });
             }
           }
-        });
+        }
       }
 
       if (options.extractNumbers) {
-        const numbers = doc.numbers().out('array');
-        numbers.forEach((number: string) => {
-          const match = doc.match(number);
-          if (match.found) {
-            const confidence = this.calculateConfidence(number, 'NUMBER');
+        // Enhanced number extraction with context-aware patterns
+        const numberPatterns = [
+          /\b(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\b/g, // Formatted numbers
+          /\b(\d+(?:\.\d+)?%?)\b/g, // Percentages and decimals
+          /\$([\d,]+(?:\.\d{2})?)\b/g // Currency
+        ];
+        
+        for (const pattern of numberPatterns) {
+          let match;
+          while ((match = pattern.exec(preprocessedText)) !== null) {
+            const numberText = match[1] || match[0];
+            const confidence = this.calculateEnhancedConfidence(
+              numberText,
+              'NUMBER',
+              preprocessedText.substring(Math.max(0, match.index - options.contextWindow),
+                                      Math.min(preprocessedText.length, match.index + numberText.length + options.contextWindow)),
+              options
+            );
+            
             if (confidence >= options.confidenceThreshold) {
               entities.push({
-                text: number,
+                text: numberText,
                 label: 'NUMBER',
-                start: match.offset().start,
-                end: match.offset().start + number.length,
-                confidence
+                start: match.index,
+                end: match.index + numberText.length,
+                confidence,
+                domain: options.domain !== 'general' ? options.domain : undefined
               });
             }
           }
-        });
+        }
       }
 
       // Extract custom entities

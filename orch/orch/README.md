@@ -1,6 +1,6 @@
-# gRPC Orchestration Client Library v1.1
+# Node.js Orchestration Engine v1.1
 
-A comprehensive TypeScript gRPC client library for orchestration policy services with advanced fault tolerance, circuit breaker pattern, and intelligent retry mechanisms.
+A production-ready Node.js gRPC client that interfaces with a Python policy service using the v1.1 protocol for recursive AI orchestration with TRPO-based policy learning.
 
 ## Features
 
