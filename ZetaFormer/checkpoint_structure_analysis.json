@@ -1,0 +1,17 @@
+{
+  "checkpoint_analyzed": "level_0_checkpoint.pt",
+  "sections": {},
+  "kappa_access_methods": [
+    {
+      "method": "ckpt['curriculum_info']['kappa_zeta']",
+      "error": "'curriculum_info'",
+      "works": false
+    },
+    {
+      "method": "ckpt['stabilized_kappa']",
+      "value": 0.2100941642356708,
+      "type": "float",
+      "works": true
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "angle_spacing": {
+    "mean": 0.03107455798132027,
+    "std": 0.13235241111320023,
+    "ks_statistic": 0.9632584822317575,
+    "ks_pvalue": 4.9043977645196837e-42
+  },
+  "complexity": {
+    "n_foci_min": 0,
+    "n_foci_max": 1377,
+    "n_jumps": 1377
+  },
+  "m_ratio": {
+    "matching_score": 0.0,
+    "n_peaks": 0
+  }
+}
