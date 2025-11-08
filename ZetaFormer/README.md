@@ -431,10 +431,6 @@ Areas for improvement:
 }
 ```
 
-## License
-
-MIT License
-
 ## Changelog
 
 ### v2.0 (2025-01-08)
