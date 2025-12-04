@@ -103,7 +103,7 @@ Feel free to explore, cite, and extend the work under the terms of the license, 
 ## 🌐 Contact
 For questions, collaborations, or feedback:
 - GitHub: [github.com/sarhamam](https://github.com/sarhamam)
-- Email: 342sarhamam@gmail.com
+- Email: contact@noeticeidos.com
 
 ## License
 
