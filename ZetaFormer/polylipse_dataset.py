@@ -324,7 +324,7 @@ def make_circle_dataset(n_samples: int = 1000, **kwargs) -> Tuple:
     """Single focus (n=1) - isotropic circle."""
     return make_polylipse_dataset(
         n_foci=1,
-        observed_kappa=1.0,  # Circle is isotropic
+        observed_kappa=1,  # Circle is Isomorpism
         n_samples=n_samples,
         **kwargs
     )

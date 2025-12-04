@@ -559,14 +559,14 @@ if __name__ == "__main__":
 
         elif command in ["viz", "visualize", "v"]:
             # Visualize existing checkpoints
-            checkpoint_path = sys.argv[2] if len(sys.argv) > 2 else None
+            checkpoint_path = './polylipse_curricuculum_results' or sys.argv[2] if len(sys.argv) > 2 else None
             include_cgd = "--cgd" in sys.argv or "-c" in sys.argv
             visualize_checkpoints(checkpoint_path, include_cgd)
 
         else:
             print(f"Unknown command: {command}")
             print("\nUsage:")
-            print("  python example_adaptive_polylipse.py                  # Full curriculum")
+            print("  python example_adaptive_polylipse.py                  # Full curri culum")
             print("  python example_adaptive_polylipse.py quick            # Quick demo (1→3 foci)")
             print("  python example_adaptive_polylipse.py math             # Show focal mathematics")
             print("  python example_adaptive_polylipse.py compare          # Compare adaptive vs fixed")
@@ -580,4 +580,4 @@ if __name__ == "__main__":
 
     else:
         # Default: run full curriculum
-        run_full_curriculum(max_n_foci=3, epochs_per_level=100)
+        run_full_curriculum(max_n_foci=1000000000, epochs_per_level=1)

@@ -13,7 +13,7 @@ The κζ values are discovered during training, not specified in advance.
 Author: Enhanced for Noetic Eidos Project
 License: MIT
 """
-
+SEED = 634
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -428,7 +428,7 @@ def train_with_adaptive_curriculum(
                     'orbit_std': 0.3,
                     'noise': 0.05,
                     'n_samples': n_samples,
-                    'embedding_seed': 42,  # Fixed seed for reproducibility
+                    'embedding_seed': SEED,  # Fixed seed for reproducibility
                 },
 
                 # ============ Curriculum Context ============
